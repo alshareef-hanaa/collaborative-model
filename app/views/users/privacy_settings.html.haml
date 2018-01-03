@@ -4,8 +4,9 @@
 
 - content_for :page_title do
   = t('.title')
-
-.bootstrap_header_padding
+.topbar{"data-dropdown" => "dropdown"}
+  .topbar-inner
+    .bootstrap_header_padding
 
 .container
   .row-fluid
@@ -37,7 +38,8 @@
         %br
         = "Protect location against the following aspects"
         %br
-        = select_tag 'location_aspects[]', options_for_select(@aspects.collect{|x| [x.name,x.id]}.push(["Everyone", -1]), @protected_location), {:multiple => :multiple, :size => @aspects.size + 1}
+        = select_tag 'location_aspects[]', options_for_select(@aspects.collect{|x| [x.name,x.id]}.push(["Everyone", -1],["Non",-2]), @protected_location), {:multiple => :multiple, :size => @aspects.size + 2}
+
         %br
 
         -# Mentions policy section
@@ -59,7 +61,7 @@
         = select_tag 'mentions_aspects[]', options_for_select(@aspects.collect{|x| [x.name,x.id]}.push(["Everyone", -1]), @protected_mentions), {:multiple => :multiple, :size => @aspects.size + 1}
         %br
 
-        Pictures policy section
+        -#Pictures policy section
         %h4
           %u
             = "Protect Pictures"
@@ -97,15 +99,137 @@
         %br
         = select_tag 'weekend_aspects[]', options_for_select(@aspects.collect{|x| [x.name,x.id]}.push(["Everyone", -1]), @weekend_pics), {:multiple => false, :size => @aspects.size + 1}
         %br
+          %h3
+            ="Policies for collaborative decision"
+          %br
+          -#   allowed aspects for each type of posts (Based on relationship between user and uploader)
+          %h4
+            %u
+            = "Allowed aspects in posts where I have been mentioned"
+          -# Friends
+          %br
+            = "Friends' posts"
+          %br
+            = check_box_tag :allowed_aspects_friends_posts, 'yes', @allowed_aspects_friends_posts
+            = "Allowed aspects"
+            %br
+              = select_tag 'friend_allowed_aspects[]', options_for_select(@aspects.collect{|x| [x.name,x.id]}.push(["Everyone", -1],["Nobody",-2],["I do not care",-3]), @allowed_aspectsids_for_friends_post), {:multiple => :multiple, :size => @aspects.size + 3}
+            = check_box_tag :disallowed_aspects_friends_posts, 'yes', @disallowed_aspects_friends_posts
+            = "Dis-allowed aspects"
+            %br
+              = select_tag 'friend_disallowed_aspects[]', options_for_select( @disallowed_options.collect{|k,v| [k,v]}, @disallowed_aspectsids_for_friends_post), {:multiple => false, :size => @disallowed_options.size, :style => "width:300px"}
+          -# Family
+          %br
+            ="Family's posts"
+          %br
+            = check_box_tag :allowed_aspects_family_members_posts, 'yes', @allowed_aspects_family_members_posts
+            = "Allowed aspects"
+            %br
+              = select_tag 'family_members_allowed_aspects[]', options_for_select(@aspects.collect{|x| [x.name,x.id]}.push(["Everyone", -1],["Nobody",-2],["I do not care",-3]), @allowed_aspectsids_for_family_members_post), {:multiple => :multiple, :size => @aspects.size + 3}
+            = check_box_tag :disallowed_aspects_family_members_posts, 'yes', @disallowed_aspects_family_members_posts
+            = "Dis-allowed aspects"
+            %br
+              = select_tag 'family_members_disallowed_aspects[]', options_for_select( @disallowed_options.collect{|k,v| [k,v]}, @disallowed_aspectsids_for_family_members_post), {:multiple => false, :size => @disallowed_options.size, :style => "width:300px"}
+          -# Coworker
+          %br
+            ="Coworkers' posts"
+          %br
+            = check_box_tag :allowed_aspects_coworkers_posts, 'yes', @allowed_aspects_coworkers_posts
+            = "Allowed aspects "
+            %br
+              = select_tag 'coworkers_allowed_aspects[]', options_for_select(@aspects.collect{|x| [x.name,x.id]}.push(["Everyone", -1],["Nobody",-2],["I do not care",-3]), @allowed_aspectsids_for_coworkers_post), {:multiple => :multiple, :size => @aspects.size + 3}
+            = check_box_tag :disallowed_aspects_coworkers_posts, 'yes', @disallowed_aspects_coworkers_posts
+            = "Dis-allowed aspects"
+            %br
+              = select_tag 'coworkers_disallowed_aspects[]', options_for_select( @disallowed_options.collect{|k,v| [k,v]}, @disallowed_aspectsids_for_coworkers_post), {:multiple => false, :size => @disallowed_options.size, :style => "width:300px"}
+            %br
+            ="Acquaintances' posts"
+          %br
+            = check_box_tag :allowed_aspects_acquaintances_posts, 'yes', @allowed_aspects_acquaintances_posts
+            = "Allowed aspects"
+            %br
+              = select_tag 'acquaintances_allowed_aspects[]', options_for_select(@aspects.collect{|x| [x.name,x.id]}.push(["Everyone", -1],["Nobody",-2],["I do not care",-3]), @allowed_aspectsids_for_acquaintances_post), {:multiple => :multiple, :size => @aspects.size + 3}
+            = check_box_tag :disallowed_aspects_acquaintances_posts, 'yes', @disallowed_aspects_acquaintances_posts
+            = "Dis-allowed aspects"
+            %br
+              = select_tag 'acquaintances_disallowed_aspects[]', options_for_select( @disallowed_options.collect{|k,v| [k,v]}, @disallowed_aspectsids_for_acquaintances_post), {:multiple => false, :size => @disallowed_options.size, :style => "width:300px"}
+
+          %br
+          -#%h4
+          -#%u
+          -#  = "sensitivity level of your aspects"
+          -#%br
+          -#  = @userrr.each do |h|
+          -#  = h.name
+          -#.small-horizontal-spacer
+          %br
+          %h4
+            %u
+              = "Sensitive level of shared posts based on their types "
+          %br
+            = "sensitive level of post has location"
+            = select_tag 'sl_location_posts_option', options_for_select(@sensitive_options.collect{|k,v| [k]}, @selected_sl_ption_locaation_posts), {:multiple => false, :size => @sensitive_options}
+          %br
+            = "sensitive level of post has pictures"
+            = select_tag 'sl_picture_posts_option', options_for_select(@sensitive_options.collect{|k,v| [k]}, @selected_sl_option_picture_posts), {:multiple => false, :size => @sensitive_options}
+          %br
+            = "sensitive level of post has mentioned users"
+            = select_tag 'sl_mention_posts_option', options_for_select(@sensitive_options.collect{|k,v| [k]}, @selected_sl_option_mention_posts), {:multiple => false, :size => @sensitive_options}
         %br
+          %h4
+            %u
+              = "Sensitive level of your aspects "
+          %br
+            = "The sensitivity level of friends"
+            = select_tag 'sl_friends_aspect_option', options_for_select(@sensitive_options.collect{|k,v| [k]}, @selected_sl_ption_friends_aspect), {:multiple => false, :size => @sensitive_options}
+          %br
+            = "The sensitivity level of family"
+            = select_tag 'sl_family_aspect_option', options_for_select(@sensitive_options.collect{|k,v| [k]}, @selected_sl_option_family_aspect), {:multiple => false, :size => @sensitive_options}
+          %br
+            = "The sensitivity level of co-workers"
+            = select_tag 'sl_coworkers_aspect_option', options_for_select(@sensitive_options.collect{|k,v| [k]}, @selected_sl_option_work_aspect), {:multiple => false, :size => @sensitive_options}
+          %br
+            = "The sensitivity level of acquaintances"
+            = select_tag 'sl_acquaintances_aspect_option', options_for_select(@sensitive_options.collect{|k,v| [k]}, @selected_sl_option_acquaintances_aspect), {:multiple => false, :size => @sensitive_options}
+        %br
+          %h4
+            %u
+              = "Trust level of your aspects "
+          %br
+            = "The trust level of friends"
+            = select_tag 'tl_friends_aspect_option', options_for_select(@trust_level_options.collect{|k,v| [k]}, @selected_tl_option_friends_aspect), {:multiple => false, :size => @trust_level_options}
+          %br
+            = "The trust level of family"
+            = select_tag 'tl_family_aspect_option', options_for_select(@trust_level_options.collect{|k,v| [k]}, @selected_tl_option_family_aspect), {:multiple => false, :size => @trust_level_options}
+          %br
+            = "The trust level of co-workers"
+            = select_tag 'tl_coworkers_aspect_option', options_for_select(@trust_level_options.collect{|k,v| [k]}, @selected_tl_option_work_aspect), {:multiple => false, :size => @trust_level_options}
+          %br
+            = "The trust level of acquaintances"
+            = select_tag 'tl_acquaintances_aspect_option', options_for_select(@trust_level_options.collect{|k,v| [k]}, @selected_tl_option_acquaintances_aspect), {:multiple => false, :size => @trust_level_options}
+        %br
+          %h4
+            %u
+              = "Trust threshold value to reshare "
+          %br
+          %p
+            = " trust threshold indicates how high the minimum trust value from you to any accessor should be to grant him/her permission to reshare the item."
+          = select_tag 'tr_threshold', options_for_select(@trust_level_options.collect{|k,v| [k]}, @tr_threshold_option), {:multiple => false, :size => @trust_level_options}
+        %br
+          %h4
+            %u
+              = "Mentioned users re_sharing"
+          %br
+          %p
+            = "Select the aspects which their members (who consider here as mentioned users) are allowed to re-share "
+          %br
+            = select_tag 'allowed_aspects_reshare[]', options_for_select(@aspects.collect{|x| [x.name,x.id]}.push(["Everyone", -1],["Nobody",-2],["I do not care",-3]), @selected_allowed_aspects_reshare), {:multiple => :multiple, :size => @aspects.size + 3}
         %hr
         = submit_tag 'Save changes', :class => "btn"
 
         %hr
       %h3
         = t('.ignored_users')
-
-
       - @blocks.each do |block|
         = block.person_name
         \-

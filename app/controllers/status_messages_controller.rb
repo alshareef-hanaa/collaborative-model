@@ -53,6 +53,8 @@ class StatusMessagesController < ApplicationController
     }
   end
 
+  # def compute_aspects(aux)
+
   def create
     params[:status_message][:aspect_ids] = [*params[:aspect_ids]]
     normalize_public_flag!
@@ -66,22 +68,44 @@ class StatusMessagesController < ApplicationController
         @status_message.poll.poll_answers.build(:answer => poll_answer)
       end
     end
-
-
     @status_message.attach_photos_by_ids(params[:photos])
+
+
+
+    puts "how much me as stakeholder I' sensitive to owner "
+
+    # u1=1
+    # controllers=[1,2,3]
+    # def votertrustlevel (u1,controllers)
+    #   controllers=controllers.delete_if {|x| x == u1 }
+    #   voter_tt=0
+    #   controllers.each do |id|
+    #     relationship_type= rt1(id,u1)
+    #     relationship_type=relationship_type.to_s
+    #     if relationship_type.nil? || relationship_type.empty?
+    #       trust_level=0
+    #       # retrieve trust level of this relationship type from controller side
+    #     else
+    #       trust_level= Aspect.where(:user_id => id[:user_id], :name => relationship_type).collect{|e| e.trust_level}.first
+    #     end
+    #     voter_tt += trust_level
+    #   end
+    #   return voter_tt
+    # end
 
 
     # ------------------------ Added by me!!!!! ------------------------
 
     puts(current_user.username.to_s + " is posting")
 
-    larva_monitor = true; # enable disable communication to LARVA monitor
+    larva_monitor = true; # enable disable communication to LARVA monitor which is started in automata and send to it in checker
     if larva_monitor
       puts "Communication with larva activated"
     else
       puts "Communication with larva deactivated"
     end
 
+    # check shared policies
     checker = Privacy::Checker.new
     @violatedPeopleCount = checker.checkPolicies(params)
 
@@ -109,6 +133,74 @@ class StatusMessagesController < ApplicationController
       end
       # ------------- COMMUNICATION WITH LARVA -------------------------
     end
+    # --------- Adedd by Hanaa ----------
+
+    # if @status_message.save
+    #   # ******* here I have to check if status_message has mentioned users or not if not that means (we don't have to check share policies and add this post to stream of selected aspects) 
+    #   # if it has @ that means we just post this in author and mentioned users streams ... 
+    #    mentioned_users= Diaspora::Mentionable.people_from_string(params[:status_message][:text])
+    #    if mentioned_users != nil
+    #       # aspects = current_user.aspects_from_ids(destination_aspect_ids)
+    #       # author=params[:status_message][:author]
+    #       # aspectscopy = current_user.aspects_from_ids(destination_aspect_ids)
+    #       # aspectscopy = compute_aspects(aspectscopy)
+    #       # current_user.add_to_streams(@status_message, [aspects[0]])
+    #
+    #       current_user.add_to_streams(@status_message, [current_user])
+    #       receiving_services = Service.titles(services)
+    #       current_user.dispatch_post(@status_message, :url => short_post_url(@status_message.guid), :service_types => receiving_services)
+    #
+    #       #this is done implicitly, somewhere else, but it doesnt work, says max. :'(
+    #       @status_message.photos.each do |photo|
+    #         current_user.dispatch_post(photo)
+    #       end
+    #
+    #       current_user.participate!(@status_message)
+    #
+    #       if coming_from_profile_page? && !own_profile_page? # if this is a post coming from a profile page
+    #         flash[:notice] = successful_mention_message
+    #       end
+    #
+    #       respond_to do |format|
+    #         format.html { redirect_to :back }
+    #         format.mobile { redirect_to stream_path }
+    #         format.json { render :json => PostPresenter.new(@status_message, current_user), :status => 201 }
+    #       end
+    #    else
+    #      aspects = current_user.aspects_from_ids(destination_aspect_ids)
+    #      current_user.add_to_streams(@status_message, aspects)
+    #      receiving_services = Service.titles(services)
+    #      current_user.dispatch_post(@status_message, :url => short_post_url(@status_message.guid), :service_types => receiving_services)
+    #
+    #      #this is done implicitly, somewhere else, but it doesnt work, says max. :'(
+    #      @status_message.photos.each do |photo|
+    #        current_user.dispatch_post(photo)
+    #      end
+    #
+    #      current_user.participate!(@status_message)
+    #
+    #      if coming_from_profile_page? && !own_profile_page? # if this is a post coming from a profile page
+    #        flash[:notice] = successful_mention_message
+    #      end
+    #
+    #      respond_to do |format|
+    #        format.html { redirect_to :back }
+    #        format.mobile { redirect_to stream_path }
+    #        format.json { render :json => PostPresenter.new(@status_message, current_user), :status => 201 }
+    #      end
+    #
+    #    end
+    #
+    # else
+    #   respond_to do |format|
+    #     format.html { redirect_to :back }
+    #     format.mobile { redirect_to stream_path }
+    #     format.json { render :nothing => true, :status => 403 }
+    #   end
+    #
+    # end
+
+
     # ------------------------ Added by me!!!!! ------------------------
 
     # If nobody's privacy policies were violated then the creation of the
@@ -118,14 +210,12 @@ class StatusMessagesController < ApplicationController
         aspects = current_user.aspects_from_ids(destination_aspect_ids)
         current_user.add_to_streams(@status_message, aspects)
         receiving_services = Service.titles(services)
-
         current_user.dispatch_post(@status_message, :url => short_post_url(@status_message.guid), :service_types => receiving_services)
 
         #this is done implicitly, somewhere else, but it doesnt work, says max. :'(
         @status_message.photos.each do |photo|
           current_user.dispatch_post(photo)
         end
-
         current_user.participate!(@status_message)
 
         if coming_from_profile_page? && !own_profile_page? # if this is a post coming from a profile page
@@ -137,6 +227,25 @@ class StatusMessagesController < ApplicationController
           format.mobile { redirect_to stream_path }
           format.json { render :json => PostPresenter.new(@status_message, current_user), :status => 201 }
         end
+
+        # add status message in all @ users (stakeholders) aspects streams
+        pplmentioned = Diaspora::Mentionable.people_from_string(params[:status_message][:text])
+        pplmentioned.each do |p|
+          x=p.owner_id
+          y=params[:status_message][:author].id
+          # retrieve relationship type between stakeholder and owner
+          relationship_type= rt(p.owner_id,y)
+          relationship_type=relationship_type.to_s
+          aspect_ids= AllowedAspects.where(:user_id => p.owner_id,:relationship_type =>relationship_type).collect{|e| e.allowed_aspectids}
+          p_as_user=User.where(:id => p.owner_id).first
+          aspects = p_as_user.aspects_from_ids(aspect_ids)
+          #  change p to Users class
+          p_as_user.add_to_streams(@status_message, aspects)
+          receiving_services = Service.titles(services)
+          p_as_user.dispatch_post(@status_message, :url => short_post_url(@status_message.guid), :service_types => receiving_services)
+
+        end
+
       else
         respond_to do |format|
           format.html { redirect_to :back }
@@ -147,10 +256,23 @@ class StatusMessagesController < ApplicationController
     # If somebody's privacy policy has been violated we should inform the user
     # posting the status message about the fact that (s)he is violating other
     # users' privacy policies
-    else
+     else
       # TODO: Print a message informing that the message was not created due
       # to a privacy policy violation
     end
+  end
+
+  def rt (u1,u2)
+    rtname=""
+    aspects = Aspect.where(:user_id => u1)
+    aspects.each do |a|
+      checker = Privacy::Checker.new
+      members= checker.people_from_aspect_ids([a.id])
+      if members.include? (u2)
+        rtname= a.to_s
+      end
+    end
+    return rtname
   end
 
   private
@@ -183,6 +305,22 @@ class StatusMessagesController < ApplicationController
     params[:status_message][:public] = public_flag
     public_flag
   end
+
+
+  def rt1 (u1,u2)
+    rtname=""
+    aspects = Aspect.where(:user_id => u1)
+    aspects.each do |a|
+      checker = Privacy::Checker.new
+      members= checker.people_from_aspect_ids([a.id])
+      if members.include? (u2)
+        rtname= a.to_s
+      end
+    end
+    return rtname
+  end
+
+
 
   def remove_getting_started
     current_user.disable_getting_started

@@ -11,8 +11,8 @@ class Aspect < ActiveRecord::Base
   has_many :aspect_visibilities, :dependent => :destroy
   has_many :posts, :through => :aspect_visibilities, :source => :shareable, :source_type => 'Post'
   has_many :photos, :through => :aspect_visibilities, :source => :shareable, :source_type => 'Photo'
-
   validates :name, :presence => true, :length => { :maximum => 20 }
+  # attr_accessible :sensitive_level, :trust_level
 
   validates_uniqueness_of :name, :scope => :user_id, :case_sensitive => false
 

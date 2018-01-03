@@ -4,9 +4,9 @@
 
 class UsersController < ApplicationController
   before_filter :authenticate_user!, :except => [:new, :create, :public, :user_photo]
-  before_filter -> { @css_framework = :bootstrap }, only: [:privacy_settings, :edit]
+  before_filter -> { @css_framework = :bootstrap }, only: [:privacy_settings,:sharing_privacy_settings, :edit]
 
-  layout ->(c) { request.format == :mobile ? "application" : "with_header_with_footer" }, only: [:privacy_settings, :edit]
+  layout ->(c) { request.format == :mobile ? "application" : "with_header_with_footer" }, only: [:privacy_settings, :sharing_privacy_settings, :edit]
 
   use_bootstrap_for :getting_started
 
@@ -22,12 +22,328 @@ class UsersController < ApplicationController
       @email_prefs[pref.email_type] = false
     end
   end
+  # ------------- Added by Hanaa ---------------
+  # get senstive level of aspects : done
+
+  # get senstive levl of shared item :done
+
+  # get allawed aspects :done
+
+  # get trust level for each aspect :done
+
+  # get threshold value to reshare
+
 
   def privacy_settings
     @blocks = current_user.blocks.includes(:person)
     @aspects = Aspect.where(:user_id => current_user.id)
+    @disallowed_options={"I do not care"=> -3, "Everyone does not belong to your aspects list"=> -4, "Aspects that did not select as allowed "=> -5,"Everyone"=> -6 }
+    @sensitive_options={"Minimum"=> 0.01,"Low"=> 0.25, "Mid"=> 0.50, "High"=> 1.00}
+    @trust_level_options={"Low"=> 0.25, "Mid"=> 0.50, "High"=> 1.00}
+
+    # Create a privacy handler to add or remove privacy policies
     handler = Privacy::Handler.new
 
+    #---------------- Added by Hanaa ------------
+
+    # ------ Get allowed aspects for each uploader R types-------
+
+    # First Friends' posts allowed aspects
+     # ** allowed aspects **
+     # check whether posts from friends has privacy policies (allowed any aspects)
+      friends_posts_privacy_policy_1 = AllowedAspects.where(:user_id => current_user.id, :relationship_type => "Friends")
+      #check if user care about allowed who can access his/her friends' posts
+      @allowed_aspectsids_friends_posts = false
+      friendsp_1= friends_posts_privacy_policy_1.first
+      if friendsp_1 !=nil
+        @allowed_aspectsids_friends_posts=true
+       # Get all allowed aspects for post from friend
+       allowed_aspectsids_friend = handler.get_user_allowed_aspects_h(current_user.id, "Friends")
+       @allowed_aspectsids_for_friends_post = []
+       allowed_aspectsids_friend.each do |da|
+       @allowed_aspectsids_for_friends_post.push(da)
+        end
+      end
+    # ** disallowed aspects **
+    # check whether posts from friends have privacy policies (disallowed any aspects)
+    friends_posts_privacy_policy_2 = DisallowedAspects.where(:user_id => current_user.id, :relationship_type => "Friends")
+    #check if user care about disallowed who can access his/her friends posts
+    @disallowed_aspects_friends_posts= false
+    friendsp_2 = friends_posts_privacy_policy_2.first
+    if friendsp_2 !=nil
+      @disallowed_aspects_friends_posts=true
+      # Get all disallowed aspects for post from friends
+      disallowed_aspectsids_friends = handler.get_user_disallowed_aspects_h(current_user.id, "Friends")
+      @disallowed_aspectsids_for_friends_post = []
+      disallowed_aspectsids_friends.each do |da|
+        @disallowed_aspectsids_for_friends_post.push(da)
+      end
+    end
+
+
+    # Second Family members' posts allowed aspects
+    # ** allowed aspects **
+    # check whether posts from family members have privacy policies (allowed any aspects)
+    family_members_posts_privacy_policy = AllowedAspects.where(:user_id => current_user.id, :relationship_type => "Family")
+    #check if user care about allowed who can access his/her family members' posts
+    @allowed_aspects_family_members_posts= false
+    familyp_1 = family_members_posts_privacy_policy.first
+    if familyp_1 !=nil
+      @allowed_aspects_family_members_posts=true
+      # Get all allowed aspects for post from friend
+      allowed_aspectsids_family = handler.get_user_allowed_aspects_h(current_user.id, "Family")
+      @allowed_aspectsids_for_family_members_post = []
+      allowed_aspectsids_family.each do |da|
+        @allowed_aspectsids_for_family_members_post.push(da)
+      end
+    end
+    # ** disallowed aspects **
+    # check whether posts from Family members have privacy policies (disallowed any aspects)
+    family_members_posts_privacy_policy_2 = DisallowedAspects.where(:user_id => current_user.id, :relationship_type => "Family")
+    #check if user care about disallowed who can access his/her family members posts
+    @disallowed_aspects_family_members_posts= false
+    familyp_2 = family_members_posts_privacy_policy_2.first
+    if familyp_2 !=nil
+      @disallowed_aspects_family_members_posts=true
+      # Get all disallowed aspects for post from family members
+      disallowed_aspectsids_family = handler.get_user_disallowed_aspects_h(current_user.id, "Family")
+      @disallowed_aspectsids_for_family_members_post = []
+      disallowed_aspectsids_family.each do |da|
+        @disallowed_aspectsids_for_family_members_post.push(da)
+      end
+    end
+
+   # Third  coworkers posts allowed aspects
+    # ** allowed aspects **
+    # check whether posts from coworkers have privacy policies (allowed or disallowed any aspects)
+    coworkers_posts_privacy_policy_1 = AllowedAspects.where(:user_id => current_user.id, :relationship_type => "Work")
+    #check if user care about allowed who can access his/her coworkers posts
+    @allowed_aspects_coworkers_posts= false
+    coworkersp_1 = coworkers_posts_privacy_policy_1.first
+    if coworkersp_1 !=nil
+      @allowed_aspects_coworkers_posts=true
+      # Get all allowed aspects for post from coworkers
+      allowed_aspectsids_coworker = handler.get_user_allowed_aspects_h(current_user.id, "Work")
+      @allowed_aspectsids_for_coworkers_post = []
+      allowed_aspectsids_coworker.each do |da|
+        @allowed_aspectsids_for_coworkers_post.push(da)
+      end
+    end
+    # ** disallowed aspects **
+    # check whether posts from cowrkers have privacy policies (disallowed any aspects)
+    coworkers_posts_privacy_policy_2 = DisallowedAspects.where(:user_id => current_user.id, :relationship_type => "Work")
+    #check if user care about disallowed who can access his/her cowrkers posts
+    @disallowed_aspects_workers_posts= false
+    coworkersp_2 = coworkers_posts_privacy_policy_2.first
+    if coworkersp_2 !=nil
+      @disallowed_aspects_coworkers_posts=true
+      # Get all disallowed aspects for post from coworkers
+      disallowed_aspectsids_coworker = handler.get_user_disallowed_aspects_h(current_user.id, "Work")
+      @disallowed_aspectsids_for_coworkers_post = []
+      disallowed_aspectsids_coworker.each do |da|
+        @disallowed_aspectsids_for_coworkers_post.push(da)
+      end
+    end
+
+
+    # Fourth acquaintances posts
+    # ** allowed aspects **
+    # check whether posts from acquaintances have privacy policies (allowed or disallowed any aspects)
+    acquaintances_posts_privacy_policy_1 = AllowedAspects.where(:user_id => current_user.id, :relationship_type => "Acquaintances")
+    #check if user care about allowed who can access his/her acquaintances posts
+    @allowed_aspects_acquaintances_posts= false
+    acquaintancesp_1 = acquaintances_posts_privacy_policy_1.first
+    if acquaintancesp_1 !=nil
+      @allowed_aspects_acquaintances_posts=true
+      # Get all allowed aspects for post from acquaintances
+      allowed_aspectsids_acquaintances = handler.get_user_allowed_aspects_h(current_user.id, "Acquaintances")
+      @allowed_aspectsids_for_acquaintances_post = []
+      allowed_aspectsids_acquaintances.each do |da|
+        @allowed_aspectsids_for_acquaintances_post.push(da)
+      end
+    end
+    # ** disallowed aspects **
+    # check whether posts from acquaintances have privacy policies (disallowed any aspects)
+    acquaintances_posts_privacy_policy_2 = DisallowedAspects.where(:user_id => current_user.id, :relationship_type => "Acquaintances")
+    #check if user care about disallowed who can access his/her acquaintances posts
+    @disallowed_aspects_acquaintances_posts= false
+    acquaintancesp_2 = acquaintances_posts_privacy_policy_2.first
+    if acquaintancesp_2 !=nil
+      @disallowed_aspects_acquaintances_posts=true
+      # Get all disallowed aspects for post from acquaintances
+      disallowed_aspectsids_acquaintances = handler.get_user_disallowed_aspects_h(current_user.id, "Acquaintances")
+      @disallowed_aspectsids_for_acquaintances_post = []
+      disallowed_aspectsids_acquaintances.each do |da|
+        @disallowed_aspectsids_for_acquaintances_post.push(da)
+      end
+    end
+
+
+    # ------ Get sensitive level of shared items -----------
+
+    # First location's post
+    location_posts_sensitive_level=PostsSensitiveLevels.where(:user_id => current_user.id, :post_type => "location").collect{|e| e.sensitive_level}.first
+    location_posts_sensitive_level=location_posts_sensitive_level.to_s
+    if location_posts_sensitive_level == "0.01"
+      @selected_sl_ption_locaation_posts= "Minimum"
+    elsif location_posts_sensitive_level== "0.25"
+      @selected_sl_ption_locaation_posts="Low"
+    elsif location_posts_sensitive_level== "0.5"
+      @selected_sl_ption_locaation_posts="Mid"
+    elsif location_posts_sensitive_level== "1.0"
+      @selected_sl_ption_locaation_posts="High"
+    end
+
+    # Second pic post
+    pic_posts_sensitive_level=PostsSensitiveLevels.where(:user_id => current_user.id, :post_type => "picture").collect{|e| e.sensitive_level}.first
+    pic_posts_sensitive_level = pic_posts_sensitive_level.to_s
+    if pic_posts_sensitive_level == "0.01"
+      @selected_sl_option_picture_posts= "Minimum"
+    elsif pic_posts_sensitive_level== "0.25"
+      @selected_sl_option_picture_posts="Low"
+    elsif pic_posts_sensitive_level== "0.5"
+      @selected_sl_option_picture_posts="Mid"
+    elsif pic_posts_sensitive_level== "1.0"
+      @selected_sl_option_picture_posts="High"
+    end
+
+    # Third @ post
+    mention_posts_sensitive_level=PostsSensitiveLevels.where(:user_id => current_user.id, :post_type => "mention").collect{|e| e.sensitive_level}.first
+    mention_posts_sensitive_level = mention_posts_sensitive_level.to_s
+      if mention_posts_sensitive_level == "0.01"
+        @selected_sl_option_mention_posts= "Minimum"
+      elsif mention_posts_sensitive_level== "0.25"
+        @selected_sl_option_mention_posts="Low"
+      elsif mention_posts_sensitive_level== "0.5"
+        @selected_sl_option_mention_posts="Mid"
+      elsif mention_posts_sensitive_level== "1.0"
+        @selected_sl_option_mention_posts="High"
+      end
+
+    # ------- Get sensitive level of aspects -------
+    #  Friends
+     friends_aspects_sensitive_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "Friends").collect{|e| e.sensitive_level}.first
+     friends_aspects_sensitive_level=friends_aspects_sensitive_level.to_s
+     if friends_aspects_sensitive_level== "0.01"
+       @selected_sl_ption_friends_aspect="Minimum"
+     elsif friends_aspects_sensitive_level== "0.25"
+       @selected_sl_ption_friends_aspect="Low"
+     elsif friends_aspects_sensitive_level== "0.5"
+       @selected_sl_ption_friends_aspect="Mid"
+     elsif friends_aspects_sensitive_level== "1.0"
+       @selected_sl_ption_friends_aspect="High"
+     end
+
+    #  Family
+    family_aspects_sensitive_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "Family").collect{|e| e.sensitive_level}.first
+    family_aspects_sensitive_level=family_aspects_sensitive_level.to_s
+    if family_aspects_sensitive_level== "0.01"
+      @selected_sl_option_family_aspect="Minimum"
+    elsif family_aspects_sensitive_level== "0.25"
+      @selected_sl_option_family_aspect="Low"
+    elsif family_aspects_sensitive_level== "0.5"
+      @selected_sl_option_family_aspect="Mid"
+    elsif family_aspects_sensitive_level== "1.0"
+      @selected_sl_option_family_aspect="High"
+    end
+
+    #  Coworker
+    work_aspects_sensitive_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "Work").collect{|e| e.sensitive_level}.first
+    work_aspects_sensitive_level=work_aspects_sensitive_level.to_s
+    if work_aspects_sensitive_level== "0.01"
+      @selected_sl_option_work_aspect="Minimum"
+    elsif work_aspects_sensitive_level== "0.25"
+      @selected_sl_option_work_aspect="Low"
+    elsif work_aspects_sensitive_level== "0.5"
+      @selected_sl_option_work_aspect="Mid"
+    elsif work_aspects_sensitive_level== "1.0"
+      @selected_sl_option_work_aspect="High"
+    end
+
+    # Acquaintances
+    acquaintances_aspects_sensitive_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "Work").collect{|e| e.sensitive_level}.first
+    acquaintances_aspects_sensitive_level=acquaintances_aspects_sensitive_level.to_s
+    if acquaintances_aspects_sensitive_level== "0.01"
+      @selected_sl_option_acquaintances_aspect="Minium"
+    elsif acquaintances_aspects_sensitive_level== "0.25"
+      @selected_sl_option_acquaintances_aspect="Low"
+    elsif acquaintances_aspects_sensitive_level== "0.5"
+      @selected_sl_option_acquaintances_aspect="Mid"
+    elsif acquaintances_aspects_sensitive_level== "1.0"
+      @selected_sl_option_acquaintances_aspect="High"
+    end
+
+    # ------ Get trust level of aspects -----------
+
+    #  Friends
+    friends_aspects_trust_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "Friends").collect{|e| e.trust_level}.first
+    friends_aspects_trust_level=friends_aspects_trust_level.to_s
+    if friends_aspects_trust_level== "0.25"
+      @selected_tl_option_friends_aspect="Low"
+    elsif friends_aspects_trust_level== "0.5"
+      @selected_tl_option_friends_aspect="Mid"
+    elsif friends_aspects_trust_level== "1.0"
+      @selected_tl_option_friends_aspect="High"
+    end
+
+    #  Family
+    family_aspects_trust_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "Family").collect{|e| e.trust_level}.first
+    family_aspects_trust_level=family_aspects_trust_level.to_s
+    if family_aspects_trust_level== "0.25"
+      @selected_tl_option_family_aspect="Low"
+    elsif family_aspects_trust_level== "0.5"
+      @selected_tl_option_family_aspect="Mid"
+    elsif family_aspects_trust_level== "1.0"
+      @selected_tl_option_family_aspect="High"
+    end
+
+    #  Coworker
+    work_aspects_trust_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "Work").collect{|e| e.trust_level}.first
+    work_aspects_trust_level=work_aspects_trust_level.to_s
+    if work_aspects_trust_level== "0.25"
+      @selected_tl_option_work_aspect="Low"
+    elsif work_aspects_trust_level== "0.5"
+      @selected_tl_option_work_aspect="Mid"
+    elsif work_aspects_trust_level== "1.0"
+      @selected_tl_option_work_aspect="High"
+    end
+
+    # Acquaintances
+    acquaintances_aspects_trust_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "Acquaintances").collect{|e| e.trust_level}.first
+    acquaintances_aspects_trust_level=acquaintances_aspects_trust_level.to_s
+    if acquaintances_aspects_trust_level== "0.25"
+      @selected_tl_option_acquaintances_aspect="Low"
+    elsif acquaintances_aspects_trust_level== "0.5"
+      @selected_tl_option_acquaintances_aspect="Mid"
+    elsif acquaintances_aspects_trust_level== "1.0"
+      @selected_tl_option_acquaintances_aspect="High"
+    end
+
+    # ------ Get trust threshold value to reshare -----------
+
+    trust_threshold_value=Person.where(:id => current_user.id).collect{|e| e.tr_threshold}.first
+    trust_threshold_value=trust_threshold_value.to_s
+      if trust_threshold_value== "0.25"
+        @tr_threshold_option="Low"
+      elsif trust_threshold_value== "0.5"
+        @tr_threshold_option="Mid"
+      elsif trust_threshold_value== "1.0"
+        @tr_threshold_option="High"
+      end
+
+    # --------- Get mentioned user who are allowed to reshare -------
+
+    allowed_mentioned_users_reshare = ControllersResharingVoting.where(:user_id => current_user.id).collect{|e| e.allowed_aspects_ids}
+    if allowed_mentioned_users_reshare !=nil
+      # Get all mentioned user who are allowed to reshare
+      allowed_mentioned_users_reshare = handler.get_allowed_mentioned_users_reshare(current_user.id)
+      @selected_allowed_aspects_reshare = []
+      allowed_mentioned_users_reshare.each do |da|
+        @selected_allowed_aspects_reshare.push(da)
+      end
+    end
+
+    # -------------------------------------------------------------------------------------------
 
     # ------------- Added by me ---------------
     # Get all the location privacy policies of the user
@@ -160,13 +476,476 @@ class UsersController < ApplicationController
 
   # ----------------------------------------- Added by me ----------------------------------------------------
   def set_privacy_policies
+
+    # Create a privacy handler to add or remove privacy policies
+    handler = Privacy::Handler.new
+
+     # ------- Added by Hanaa ---------
+
+   # First we take care of allowed and disallowed aspects for each uploader's type (rt)
+
+     # posts form frineds
+       # allowed aspects
+      if params[:allowed_aspects_friends_posts] !=nil
+       # first case: when box of allowed aspects was checked
+       # First we remove all rows regarding the allowed aspects for friends posts
+      handler.reset_policies_h(current_user.id,"Friends")
+      # if user didn't select any option
+      if params[:friend_allowed_aspects] ==nil
+        handler.add_policies(current_user.id,"Friends",-1)
+       # if user selected allowed aspects for his/her friends' post
+       # Now we have to create one row per selected aspect
+       # We check whether everyone, nobody or doesn't care was selected, and if so we only add that allowed_aspects model
+      elsif params[:friend_allowed_aspects].map(&:to_i).include? -1
+         handler.add_policies(current_user.id,"Friends",-1)
+      elsif params[:friend_allowed_aspects].map(&:to_i).include? -2
+            handler.add_policies(current_user.id,"Friends",-2)
+      elsif params[:friend_allowed_aspects].map(&:to_i).include? -3
+        handler.add_policies(current_user.id,"Friends",-3)
+      else
+        # Otherwise, for each allowed aspect we add allowed aspect
+          params[:friend_allowed_aspects].map(&:to_i).each do |p|
+          handler.add_policies(current_user.id,"Friends",p)
+        end
+      end
+      else
+        # second case: if didn't check the box for allowed aspects regarding friends'posts
+        # then -3 which means our allowed and disallowed aspects
+        # in policy are null then this associated controller is not involved in the collaborative decision
+        handler.reset_policies_h(current_user.id,"Friends")
+        handler.add_policies(current_user.id,"Friends",-3)
+      end
+     # disallowed aspects
+    if params[:disallowed_aspects_friends_posts] !=nil
+      # first case: when box of disallowed aspects was checked
+      # First we remove all rows regarding the disallowed aspects for friends' posts
+      handler.reset_dis_policies_h(current_user.id,"Friends")
+      # if user didn't select any option
+      if params[:friend_disallowed_aspects] ==nil
+        handler.add_dis_policies(current_user.id,"Friends",-6)
+        # if user selected disallowed aspects for his/her friends' post
+        # Now we have to create one row per selected aspect
+        # We check which disallowed option was selected
+      elsif params[:friend_disallowed_aspects].map(&:to_i).include? -3
+        handler.add_dis_policies(current_user.id,"Friends",-3)
+      elsif params[:friend_disallowed_aspects].map(&:to_i).include? -4
+        handler.add_dis_policies(current_user.id,"Acquaintances",-4)
+      elsif params[:friend_disallowed_aspects].map(&:to_i).include? -5
+        handler.add_dis_policies(current_user.id,"Friends",-5)
+      elsif params[:friend_disallowed_aspects].map(&:to_i).include? -6
+        handler.add_dis_policies(current_user.id,"Friends",-6)
+      end
+    else
+      # second case: if didn't check the box for allowed aspects regarding friends'posts
+      # then -3 which means our allowed and disallowed aspects
+      # in policy are null then this associated controller is not involved in the collaborative decision
+      handler.reset_dis_policies_h(current_user.id,"Friends")
+      handler.add_dis_policies(current_user.id,"Friends",-3)
+    end
+
+     # posts form family members
+     # allowed aspects
+    if params[:allowed_aspects_family_members_posts] !=nil
+      # first case: when box of allowed aspects was checked
+      # First we remove all rows regarding the allowed aspects for family members' posts
+      handler.reset_policies_h(current_user.id,"Family")
+      # if user didn't select any option
+      if params[:family_members_allowed_aspects] ==nil
+        handler.add_policies(current_user.id,"Family",-1)
+        # if user selected allowed aspects for his/her family members' post
+        # Now we have to create one row per selected aspect
+        # We check whether everyone, nobody or doesn't care was selected, and if so we only add that allowed_aspects model
+      elsif params[:family_members_allowed_aspects].map(&:to_i).include? -1
+        handler.add_policies(current_user.id,"Family",-1)
+      elsif params[:family_members_allowed_aspects].map(&:to_i).include? -2
+        handler.add_policies(current_user.id,"Family",-2)
+      elsif params[:family_members_allowed_aspects].map(&:to_i).include? -3
+        handler.add_policies(current_user.id,"Family",-3)
+      else
+        # Otherwise, for each allowed aspect we add allowed aspect
+        params[:family_members_allowed_aspects].map(&:to_i).each do |p|
+          handler.add_policies(current_user.id,"Family",p)
+        end
+      end
+    else
+      # second case: if didn't check the box for allowed aspects regarding family members'posts
+      # then -3 which means our allowed and disallowed aspects
+      # in policy are null then this associated controller is not involved in the collaborative decision
+      handler.reset_policies_h(current_user.id,"Family")
+      handler.add_policies(current_user.id,"Family",-3)
+    end
+    # disallowed aspects
+    if params[:disallowed_aspects_family_members_posts] !=nil
+      # first case: when box of disallowed aspects was checked
+      # First we remove all rows regarding the disallowed aspects for family members' posts
+      handler.reset_dis_policies_h(current_user.id,"Family")
+      # if user didn't select any option
+      if params[:family_members_disallowed_aspects] ==nil
+        handler.add_dis_policies(current_user.id,"Family",-6)
+        # if user selected disallowed aspects for his/her family members' post
+        # Now we have to create one row per selected aspect
+        # We check which disallowed option was selected
+      elsif params[:family_members_disallowed_aspects].map(&:to_i).include? -3
+        handler.add_dis_policies(current_user.id,"Family",-3)
+      elsif params[:family_members_disallowed_aspects].map(&:to_i).include? -4
+        handler.add_dis_policies(current_user.id,"Family",-4)
+      elsif params[:family_members_disallowed_aspects].map(&:to_i).include? -5
+        handler.add_dis_policies(current_user.id,"Family",-5)
+      elsif params[:family_members_disallowed_aspects].map(&:to_i).include? -6
+        handler.add_dis_policies(current_user.id,"Family",-6)
+      end
+    else
+      # second case: if didn't check the box for allowed aspects regarding family members' posts
+      # then -3 which means our allowed and disallowed aspects
+      # in policy are null then this associated controller is not involved in the collaborative decision
+      handler.reset_dis_policies_h(current_user.id,"Family")
+      handler.add_dis_policies(current_user.id,"Family",-3)
+    end
+
+    # posts from coworkers
+    # allowed aspects
+    if params[:allowed_aspects_coworkers_posts] !=nil
+      # first case: when box of allowed aspects was checked
+      # First we remove all rows regarding the allowed aspects for coworkers' posts
+      handler.reset_policies_h(current_user.id,"Work")
+      # if user didn't select any option
+      if params[:coworkers_allowed_aspects] ==nil
+        handler.add_policies(current_user.id,"Work",-1)
+        # if user selected allowed aspects for his/her coworkers' post
+        # Now we have to create one row per selected aspect
+        # We check whether everyone, nobody or doesn't care was selected, and if so we only add that allowed_aspects model
+      elsif params[:coworkers_allowed_aspects].map(&:to_i).include? -1
+        handler.add_policies(current_user.id,"Work",-1)
+      elsif params[:coworkers_allowed_aspects].map(&:to_i).include? -2
+        handler.add_policies(current_user.id,"Work",-2)
+      elsif params[:coworkers_allowed_aspects].map(&:to_i).include? -3
+        handler.add_policies(current_user.id,"Work",-3)
+      else
+        # Otherwise, for each allowed aspect we add allowed aspect
+        params[:coworkers_allowed_aspects].map(&:to_i).each do |p|
+          handler.add_policies(current_user.id,"Work",p)
+        end
+      end
+    else
+      # second case: if didn't check the box for allowed aspects regarding family members'posts
+      # then -3 which means our allowed and disallowed aspects
+      # in policy are null then this associated controller is not involved in the collaborative decision
+      handler.reset_policies_h(current_user.id,"Work")
+      handler.add_policies(current_user.id,"Work",-3)
+    end
+     # disallowed aspects
+    if params[:disallowed_aspects_coworkers_posts] !=nil
+      # first case: when box of disallowed aspects was checked
+      # First we remove all rows regarding the disallowed aspects for coworkers' posts
+      handler.reset_dis_policies_h(current_user.id,"Work")
+      # if user didn't select any option
+      if params[:coworkers_disallowed_aspects] ==nil
+        handler.add_dis_policies(current_user.id,"Work",-6)
+        # if user selected disallowed aspects for his/her coworkers' post
+        # Now we have to create one row per selected aspect
+        # We check which disallowed option was selected
+      elsif params[:coworkers_disallowed_aspects].map(&:to_i).include? -3
+        handler.add_dis_policies(current_user.id,"Work",-3)
+      elsif params[:coworkers_disallowed_aspects].map(&:to_i).include? -4
+        handler.add_dis_policies(current_user.id,"Work",-4)
+      elsif params[:coworkers_disallowed_aspects].map(&:to_i).include? -5
+        handler.add_dis_policies(current_user.id,"Work",-5)
+      elsif params[:coworkers_disallowed_aspects].map(&:to_i).include? -6
+        handler.add_dis_policies(current_user.id,"Work",-6)
+      end
+    else
+      # second case: if didn't check the box for allowed aspects regarding coworkers'posts
+      # then -3 which means our allowed and disallowed aspects
+      # in policy are null then this associated controller is not involved in the collaborative decision
+      handler.reset_dis_policies_h(current_user.id,"Work")
+      handler.add_dis_policies(current_user.id,"Work",-3)
+    end
+
+    #post from acquaintances
+    # allowed aspects
+    if params[:allowed_aspects_acquaintances_posts] !=nil
+      # first case: when box of allowed aspects was checked
+      # First we remove all rows regarding the allowed aspects for coworkers' posts
+      handler.reset_policies_h(current_user.id,"Acquaintances")
+      # if user didn't select any option
+      if params[:acquaintances_allowed_aspects] ==nil
+        handler.add_policies(current_user.id,"Acquaintances",-1)
+        # if user selected allowed aspects for his/her coworkers' post
+        # Now we have to create one row per selected aspect
+        # We check whether everyone, nobody or doesn't care was selected, and if so we only add that allowed_aspects model
+      elsif params[:acquaintances_allowed_aspects].map(&:to_i).include? -1
+        handler.add_policies(current_user.id,"Acquaintances",-1)
+      elsif params[:acquaintances_allowed_aspects].map(&:to_i).include? -2
+        handler.add_policies(current_user.id,"Acquaintances",-2)
+      elsif params[:acquaintances_allowed_aspects].map(&:to_i).include? -3
+        handler.add_policies(current_user.id,"Acquaintances",-3)
+      else
+        # Otherwise, for each allowed aspect we add allowed aspect
+        params[:acquaintances_allowed_aspects].map(&:to_i).each do |p|
+          handler.add_policies(current_user.id,"Acquaintances",p)
+        end
+      end
+    else
+      # second case: if didn't check the box for allowed aspects regarding family members'posts
+      # then -3 which means our allowed and disallowed aspects
+      # in policy are null then this associated controller is not involved in the collaborative decision
+      handler.reset_policies_h(current_user.id,"Acquaintances")
+      handler.add_policies(current_user.id,"Acquaintances",-3)
+    end
+    # disallowed aspects
+    if params[:disallowed_aspects_acquaintances_posts] !=nil
+      # first case: when box of disallowed aspects was checked
+      # First we remove all rows regarding the disallowed aspects for acquaintances' posts
+      handler.reset_dis_policies_h(current_user.id,"Acquaintances")
+      # if user didn't select any option
+      if params[:acquaintances_disallowed_aspects] ==nil
+        handler.add_dis_policies(current_user.id,"Acquaintances",-6)
+        # if user selected disallowed aspects for his/her acquaintances' post
+        # Now we have to create one row per selected aspect
+        # We check which disallowed option was selected
+      elsif params[:acquaintances_disallowed_aspects].map(&:to_i).include? -3
+        handler.add_dis_policies(current_user.id,"Acquaintances",-3)
+      elsif params[:acquaintances_disallowed_aspects].map(&:to_i).include? -4
+        handler.add_dis_policies(current_user.id,"Acquaintances",-4)
+      elsif params[:acquaintances_disallowed_aspects].map(&:to_i).include? -5
+        handler.add_dis_policies(current_user.id,"Acquaintances",-5)
+      elsif params[:acquaintances_disallowed_aspects].map(&:to_i).include? -6
+        handler.add_dis_policies(current_user.id,"Acquaintances",-6)
+      end
+    else
+      # second case: if didn't check the box for allowed aspects regarding acquaintances'posts
+      # then -3 which means our allowed and disallowed aspects
+      # in policy are null then this associated controller is not involved in the collaborative decision
+      handler.reset_dis_policies_h(current_user.id,"Acquaintances")
+      handler.add_dis_policies(current_user.id,"Acquaintances",-3)
+    end
+
+
+    # Second sensitive level of shared items based on their type
+     #location's posts
+     if params[:sl_location_posts_option] != nil
+       handler.reset_policies_of_shared_items_sensitive_level(current_user.id,"location")
+       if params[:sl_location_posts_option] == "Minimum"
+         handler.add_shared_items_sensitive_level_policies(current_user.id,"location", 0.01)
+       elsif params[:sl_location_posts_option] == "Low"
+         handler.add_shared_items_sensitive_level_policies(current_user.id,"location", 0.25)
+       elsif params[:sl_location_posts_option] == "Mid"
+         handler.add_shared_items_sensitive_level_policies(current_user.id,"location", 0.50)
+       elsif params[:sl_location_posts_option] == "High"
+         handler.add_shared_items_sensitive_level_policies(current_user.id,"location", 1.0)
+       end
+     else
+       handler.reset_policies_of_shared_items_sensitive_level(current_user.id,"location")
+       handler.add_shared_items_sensitive_level_policies(current_user.id,"location",0.01)
+     end
+     # pic posts
+      if params[:sl_picture_posts_option] != nil
+        handler.reset_policies_of_shared_items_sensitive_level(current_user.id,"picture")
+        if params[:sl_picture_posts_option] == "Minimum"
+          handler.add_shared_items_sensitive_level_policies(current_user.id,"picture", 0.01)
+        elsif params[:sl_picture_posts_option] == "Low"
+          handler.add_shared_items_sensitive_level_policies(current_user.id,"picture", 0.25)
+        elsif params[:sl_picture_posts_option] == "Mid"
+          handler.add_shared_items_sensitive_level_policies(current_user.id,"picture", 0.50)
+        elsif params[:sl_picture_posts_option] == "High"
+          handler.add_shared_items_sensitive_level_policies(current_user.id,"picture", 1.0)
+        end
+      else
+        handler.reset_policies_of_shared_items_sensitive_level(current_user.id,"picture")
+        handler.add_shared_items_sensitive_level_policies(current_user.id,"picture",0.01)
+      end
+     # @ posts
+      if params[:sl_mention_posts_option] != nil
+        handler.reset_policies_of_shared_items_sensitive_level(current_user.id,"mention")
+        if params[:sl_mention_posts_option] == "Minimum"
+          handler.add_shared_items_sensitive_level_policies(current_user.id,"mention", 0.01)
+        elsif params[:sl_mention_posts_option] == "Low"
+          handler.add_shared_items_sensitive_level_policies(current_user.id,"mention", 0.25)
+        elsif params[:sl_mention_posts_option] == "Mid"
+          handler.add_shared_items_sensitive_level_policies(current_user.id,"mention", 0.50)
+        elsif params[:sl_mention_posts_option] == "High"
+          handler.add_shared_items_sensitive_level_policies(current_user.id,"mention", 1.0)
+        end
+      else
+        handler.reset_policies_of_shared_items_sensitive_level(current_user.id,"mention")
+        handler.add_shared_items_sensitive_level_policies(current_user.id,"mention",0.01)
+      end
+
+    # Third sensitive level of each aspects
+     # Friend
+      if params[:sl_friends_aspect_option] != nil
+        handler.reset_policies_of_aspect_sensitive_level(current_user.id,"Friends")
+        if params[:sl_friends_aspect_option] == "Minimum"
+          handler.add_aspects_sensitive_level_policies(current_user.id,"Friends", 0.01)
+        elsif params[:sl_friends_aspect_option] == "Low"
+          handler.add_aspects_sensitive_level_policies(current_user.id,"Friends", 0.25)
+        elsif params[:sl_friends_aspect_option] == "Mid"
+          handler.add_aspects_sensitive_level_policies(current_user.id,"Friends", 0.50)
+        elsif params[:sl_friends_aspect_option] == "High"
+          handler.add_aspects_sensitive_level_policies(current_user.id,"Friends", 1.0)
+        end
+      else
+        handler.reset_policies_of_aspect_sensitive_level(current_user.id,"Friends")
+        handler.add_aspects_sensitive_level_policies(current_user.id,"Friends",0.01)
+      end
+    # Family
+      if params[:sl_family_aspect_option] != nil
+        handler.reset_policies_of_aspect_sensitive_level(current_user.id,"Family")
+        if params[:sl_family_aspect_option] == "Minimum"
+          handler.add_aspects_sensitive_level_policies(current_user.id,"Family", 0.01)
+        elsif params[:sl_family_aspect_option] == "Low"
+          handler.add_aspects_sensitive_level_policies(current_user.id,"Family", 0.25)
+        elsif params[:sl_family_aspect_option] == "Mid"
+          handler.add_aspects_sensitive_level_policies(current_user.id,"Family", 0.50)
+        elsif params[:sl_family_aspect_option] == "High"
+          handler.add_aspects_sensitive_level_policies(current_user.id,"Family", 1.0)
+        end
+      else
+        handler.reset_policies_of_aspect_sensitive_level(current_user.id,"Family")
+        handler.add_aspects_sensitive_level_policies(current_user.id,"Family",0.01)
+      end
+    # Cowrker
+    if params[:sl_coworkers_aspect_option] != nil
+      handler.reset_policies_of_aspect_sensitive_level(current_user.id,"Work")
+      if params[:sl_coworkers_aspect_option] == "Minimum"
+        handler.add_aspects_sensitive_level_policies(current_user.id,"Work", 0.01)
+      elsif params[:sl_coworkers_aspect_option] == "Low"
+        handler.add_aspects_sensitive_level_policies(current_user.id,"Work", 0.25)
+      elsif params[:sl_coworkers_aspect_option] == "Mid"
+        handler.add_aspects_sensitive_level_policies(current_user.id,"Work", 0.50)
+      elsif params[:sl_coworkers_aspect_option] == "High"
+        handler.add_aspects_sensitive_level_policies(current_user.id,"Work", 1.0)
+      end
+    else
+      handler.reset_policies_of_aspect_sensitive_level(current_user.id,"Work")
+      handler.add_aspects_sensitive_level_policies(current_user.id,"Work",0.01)
+    end
+    # acquaintance
+    if params[:sl_acquaintances_aspect_option] != nil
+      handler.reset_policies_of_aspect_sensitive_level(current_user.id,"Acquaintances")
+      if params[:sl_acquaintances_aspect_option] == "Minimum"
+        handler.add_aspects_sensitive_level_policies(current_user.id,"Acquaintances", 0.01)
+      elsif params[:sl_acquaintances_aspect_option] == "Low"
+        handler.add_aspects_sensitive_level_policies(current_user.id,"Acquaintances", 0.25)
+      elsif params[:sl_acquaintances_aspect_option] == "Mid"
+        handler.add_aspects_sensitive_level_policies(current_user.id,"Acquaintances", 0.50)
+      elsif params[:sl_acquaintances_aspect_option] == "High"
+        handler.add_aspects_sensitive_level_policies(current_user.id,"Acquaintances", 1.0)
+      end
+    else
+      handler.reset_policies_of_aspect_sensitive_level(current_user.id,"Acquaintances")
+      handler.add_aspects_sensitive_level_policies(current_user.id,"Acquaintances",0.01)
+    end
+
+    # Fourth trust level of each aspects
+      # Friends
+      if params[:tl_friends_aspect_option] != nil
+        handler.reset_policies_of_aspect_trust_level(current_user.id,"Friends")
+        if params[:tl_friends_aspect_option] == "Low"
+          handler.add_aspects_trust_level_policies(current_user.id,"Friends", 0.25)
+        elsif params[:tl_friends_aspect_option] == "Mid"
+          handler.add_aspects_trust_level_policies(current_user.id,"Friends", 0.50)
+        elsif params[:tl_friends_aspect_option] == "High"
+          handler.add_aspects_trust_level_policies(current_user.id,"Friends", 1.0)
+        end
+      else
+        handler.reset_policies_of_aspect_trust_level(current_user.id,"Friends")
+      end
+     # Family
+      if params[:tl_family_aspect_option] != nil
+        handler.reset_policies_of_aspect_trust_level(current_user.id,"Family")
+        if params[:tl_family_aspect_option] == "Low"
+          handler.add_aspects_trust_level_policies(current_user.id,"Family", 0.25)
+        elsif params[:tl_family_aspect_option] == "Mid"
+          handler.add_aspects_trust_level_policies(current_user.id,"Family", 0.50)
+        elsif params[:tl_family_aspect_option] == "High"
+          handler.add_aspects_trust_level_policies(current_user.id,"Family", 1.0)
+        end
+      else
+        handler.reset_policies_of_aspect_trust_level(current_user.id,"Family")
+      end
+     # coworker
+      if params[:tl_coworkers_aspect_option] != nil
+        handler.reset_policies_of_aspect_trust_level(current_user.id,"Work")
+        if params[:tl_coworkers_aspect_option] == "Low"
+          handler.add_aspects_trust_level_policies(current_user.id,"Work", 0.25)
+        elsif params[:tl_coworkers_aspect_option] == "Mid"
+          handler.add_aspects_trust_level_policies(current_user.id,"Work", 0.50)
+        elsif params[:tl_coworkers_aspect_option] == "High"
+          handler.add_aspects_trust_level_policies(current_user.id,"Work", 1.0)
+        end
+      else
+        handler.reset_policies_of_aspect_trust_level(current_user.id,"Family")
+      end
+     # acquaintances
+      if params[:tl_acquaintances_aspect_option] != nil
+        handler.reset_policies_of_aspect_trust_level(current_user.id,"Acquaintances")
+        if params[:tl_acquaintances_aspect_option] == "Low"
+          handler.add_aspects_trust_level_policies(current_user.id,"Acquaintances", 0.25)
+        elsif params[:tl_acquaintances_aspect_option] == "Mid"
+          handler.add_aspects_trust_level_policies(current_user.id,"Acquaintances", 0.50)
+        elsif params[:tl_acquaintances_aspect_option] == "High"
+          handler.add_aspects_trust_level_policies(current_user.id,"Acquaintances", 1.0)
+        end
+      else
+        handler.reset_policies_of_aspect_trust_level(current_user.id,"Acquaintances")
+      end
+
+    # Fifth trust threshold value to able to reshare
+      if params[:tr_threshold] != nil
+        handler.reset_policies_of_threshold_trust_level(current_user.id)
+        if params[:tr_threshold] == "Low"
+          handler.add_threshold_trust_level_policies(current_user.id, 0.25)
+        elsif params[:tr_threshold] == "Mid"
+          handler.add_threshold_trust_level_policies(current_user.id, 0.50)
+        elsif params[:tr_threshold] == "High"
+          handler.add_threshold_trust_level_policies(current_user.id, 1.0)
+        end
+      else
+        handler.reset_policies_of_threshold_trust_level(current_user.id)
+      end
+
+     # sixth allowed aspects which their members (who consider here as mentioned users) are allowed to re-share
+
+      # if params[:allowed_aspects_coworkers_posts] !=nil
+      #   # first case: when box of allowed aspects was checked
+      #   # First we remove all rows regarding the allowed aspects for coworkers' posts
+      #   handler.reset_policies_h(current_user.id,"Work")
+      #   # if user didn't select any option then don't participate in collabritave decision
+        if params[:allowed_aspects_reshare] !=nil
+           handler.reset_policies_of_allowed_mentioned_users_to_reshare(current_user.id)
+          # if user selected allowed aspects for his/her coworkers' post
+          # Now we have to create one row per selected aspect
+          # We check whether everyone, nobody or doesn't care was selected, and if so we only add that allowed_aspects model
+          if params[:allowed_aspects_reshare].map(&:to_i).include? -1
+            handler.add_policies_of_allowed_mentioned_users_to_reshare(current_user.id,-1)
+          elsif params[:allowed_aspects_reshare].map(&:to_i).include? -2
+            handler.add_policies_of_allowed_mentioned_users_to_reshare(current_user.id,-2)
+          elsif params[:allowed_aspects_reshare].map(&:to_i).include? -3
+            handler.add_policies_of_allowed_mentioned_users_to_reshare(current_user.id,-3)
+          else
+            # Otherwise, for each allowed aspect we add allowed aspect
+            params[:allowed_aspects_reshare].map(&:to_i).each do |p|
+              handler.add_policies_of_allowed_mentioned_users_to_reshare(current_user.id,p)
+            end
+          end
+        else
+          handler.add_policies_of_allowed_mentioned_users_to_reshare(current_user.id,-1)
+        end
+
+      #   # second case: if didn't check the box for allowed aspects regarding family members'posts
+      #   # then -3 which means our allowed and disallowed aspects
+      #   # in policy are null then this associated controller is not involved in the collaborative decision
+      #   handler.reset_policies_h(current_user.id,"Work")
+      #   handler.add_policies(current_user.id,"Work",-3)
+      # end
+
+     # -----------------------------------------------
     # if :protect_location is equal to 1 it means that it was marked, if
     # :protect_location is empty it means that is was not
 
     puts("Nothing was selected") if params[:location_aspects] == nil
 
-    # Create a privacy handler to add or remove privacy policies
-    handler = Privacy::Handler.new
 
     # First we take care of the location policies
 
@@ -342,34 +1121,34 @@ class UsersController < ApplicationController
 
   # Auxiliary function to add privacy policies to the database
   # TODO: Move this method to an external library file
-  def add_policy(shareable, to_block, to_hide)
-    return_message = ""
-    user = current_user
-    policyTemp = PrivacyPolicy.where(:user_id => user.id,
-                                     :shareable_type => shareable).first
-      if policyTemp != nil
-        return_message = "Diaspora is already protecting your " + shareable
-      else
-        policy = PrivacyPolicy.new(:user_id => user.id,
-                                   :shareable_type => shareable,
-                                   :block => to_block == "yes" ? 1 : 0, # Take the input from the user
-                                   :hide => to_hide == "yes" ? 1 : 0, # Take the input from the user
-                                   :allowed_aspect => nil) # Take the input from the user
-        policy.save
-        return_message = "Diaspora is protecting your " + shareable
-      end
-    return return_message
-  end
+  # def add_policy(shareable, to_block, to_hide)
+  #   return_message = ""
+  #   user = current_user
+  #   policyTemp = PrivacyPolicy.where(:user_id => user.id,
+  #                                    :shareable_type => shareable).first
+  #     if policyTemp != nil
+  #       return_message = "Diaspora is already protecting your " + shareable
+  #     else
+  #       policy = PrivacyPolicy.new(:user_id => user.id,
+  #                                  :shareable_type => shareable,
+  #                                  :block => to_block == "yes" ? 1 : 0, # Take the input from the user
+  #                                  :hide => to_hide == "yes" ? 1 : 0, # Take the input from the user
+  #                                  :allowed_aspect => nil) # Take the input from the user
+  #       policy.save
+  #       return_message = "Diaspora is protecting your " + shareable
+  #     end
+  #   return return_message
+  # end
 
   # Auxiliary function to delete privacy policies from the database
   # TODO: Move this method to an external library file
-  def delete_policy(shareable)
-    user = current_user
-    policy = PrivacyPolicy.where(:user_id => user.id,
-                                  :shareable_type => shareable).first
-    policy.destroy if policy != nil
-    return "Diaspora is *NOT* protecting your " + shareable
-  end
+  # def delete_policy(shareable)
+  #   user = current_user
+  #   policy = PrivacyPolicy.where(:user_id => user.id,
+  #                                 :shareable_type => shareable).first
+  #   policy.destroy if policy != nil
+  #   return "Diaspora is *NOT* protecting your " + shareable
+  # end
 
 
   def update

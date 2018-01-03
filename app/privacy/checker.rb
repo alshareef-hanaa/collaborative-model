@@ -1,8 +1,243 @@
 module Privacy
   class Checker
+
+
+
+    # I don't need params but post
+    def permittedAndDeniedAccessors (post)
+       # Algorithm1 takes policies as argument
+       list_of_allowed_ids = []
+       list_of_disallwoed_ids =[]
+       final_list_of_permitted_accessors =[]
+       final_list_of_denied_accessors =[]
+       ppl= Diaspora::Mentionable.people_from_string(post.text)
+       ppl.push(post.author_id)
+       # policy= {user_id: p.id , type_of_controller: "Stakeholder", sensitivity_of_post: sensitive_level_post, sensitivity_of_relationship: sensitive_level_between_stakeholder_and_owner ,allowed_aspects: allowed_aspects, disallowed_aspects: disallowed_aspects}
+       # policy= {user_id: params[:status_message][:author].id, type_of_controller: 'Owner', sensitivity_of_post: sensitive_level_post_owner, sensitivity_of_relationship: sensitive_level_of_relationship_type,allowed_aspects:allowed_aspects, disallowed_aspects:disallowed_aspects}
+
+       policies=checkSharingPolicies(post)
+       # accessors = {}
+        policies.each do |controller|
+          # checker = Privacy::Checker.new don't need that
+          # get allowed and disallowed users and delete ids of author and stakeholders form these lists
+          permitted_accessors= people_from_aspect_ids(controller[:allowed_aspects])
+          permitted_accessors=permitted_accessors-ppl
+          denied_accessors= people_from_aspect_ids(controller[:disallowed_aspects])
+          denied_accessors=denied_accessors-ppl
+          allowed_ids= Hash.new {|h,k| h[k]=[]}
+          allowed_ids={controller[:user_id] => permitted_accessors}
+          list_of_allowed_ids << allowed_ids
+          disallowed_ids= Hash.new {|h,k| h[k]=[]}
+          disallowed_ids={controller[:user_id] => denied_accessors}
+          list_of_disallwoed_ids << disallowed_ids
+        end
+        # check the confliction
+         decision_permit= 0.0
+         decision_deny= 0.0
+         list_of_allowed_ids.each do |controller_allowed_ids|
+           controller_allowed_ids.each_value do |allowed_ids|
+             allowed_ids.each do |user|
+               denied_votes_ids=[]
+               list_of_disallwoed_ids.each do |controller_disallowed_ids|
+                 v=controller_disallowed_ids.values.flatten(1)
+                if v.include?(user)
+                  controllerid=controller_disallowed_ids.keys
+                  denied_votes_ids.push(controllerid[0])
+                  # denied_votes_ids=denied_votes_ids.flatten(1)
+                end
+             end
+
+               if denied_votes_ids.none?
+                  final_list_of_permitted_accessors.push(user)
+               else
+                 # compute deny decision
+                 denied_votes_ids.each do |controller_id|
+                 denied_decision_info=policies.find{|x| (x[:user_id] == controller_id)}
+                 sensitivity_of_post= denied_decision_info[:sensitivity_of_post]
+                 sensitivity_of_relationship=denied_decision_info[:sensitivity_of_relationship]
+                 decision_deny += sensitivity_of_post * sensitivity_of_relationship
+               end
+
+                 #compute permit decision
+                 permitted_votes_ids=[]
+                 list_of_allowed_ids.each do |controller_allowed_ids1|
+                   v=controller_allowed_ids1.values.flatten(1)
+                   if v.include?(user)
+                    controllerid= controller_allowed_ids1.keys
+                    permitted_votes_ids.push(controllerid[0])
+                    # permitted_votes_ids=permitted_votes_ids.flatten(1)
+                   end
+                 end
+
+                  permitted_votes_ids.each do |controller_id|
+                  permitted_decision_info=policies.find{|x| (x[:user_id] == controller_id)}
+                  sensitivity_of_post= permitted_decision_info[:sensitivity_of_post]
+                  sensitivity_of_relationship=permitted_decision_info[:sensitivity_of_relationship]
+                  decision_permit += sensitivity_of_post * sensitivity_of_relationship
+                  end
+
+                if decision_permit >= decision_deny
+                 final_list_of_permitted_accessors.push(user)
+                else
+                 final_list_of_denied_accessors.push(user)
+                end
+                  # remove that user from lists
+                  # list_of_allowed_ids.delete_if{|_,v| v== user}
+                  # list_of_disallwoed_ids.delete_if{|_,v| v == user}
+               end
+               # remove that user from lists
+             end
+           end
+         end
+      # add authoir and @stakeholders in final_list_of_permitted_accessors
+       ppl.each do |id_associted_controller|
+         final_list_of_permitted_accessors.push (id_associted_controller)
+       end
+     return final_list_of_denied_accessors, final_list_of_permitted_accessors
+    end
+    # CALL in Algorithm 1 TO GET POLICIES OF SPECIFIC POST SO IT TAKES POST AS PARMETER
+    def checkSharingPolicies (post)
+
+      # ----------- Adedd by Hanaa ----------
+      # -------- Gathering sharing policies for all associated controllers------
+
+      policies =[ ]
+      # Getting the mentioned people in the post
+      ppl= Diaspora::Mentionable.people_from_string(post.text)
+
+      ppl.each do |p|
+        # retrieve relationship type between stakeholder and owner
+        relationship_type= rt(p,post.author_id)
+        relationship_type=relationship_type.to_s
+        # retrieve sensitive level of this relationship type from stakeholder side
+        sensitive_level_between_stakeholder_and_owner= Aspect.where(:user_id => p.id, :name => relationship_type).collect{|e| e.sensitive_level}.first
+
+        # retrieve sensitive level of post
+        #if post has 2 or 3 of these items then we consider the higher sl_post to use
+        sensitive_levels_post= []
+        if post.address != nil  # or can be p.address !=nil
+          sensitive_level_post_location = PostsSensitiveLevels.where(:user_id => p.id, :post_type=>"location").collect{|am| am.sensitive_level}.first
+          sensitive_levels_post.push (sensitive_level_post_location)
+        end
+
+        if post.photos.present? then
+          sensitive_level_post_photos = PostsSensitiveLevels.where(:user_id => p.id, :post_type=>"picture").collect{|am| am.sensitive_level}.first
+          sensitive_levels_post.push (sensitive_level_post_photos)
+        end
+
+        if ppl.length > 1 then # here we think about if author has includ bout this or not .. I think it has
+          sensitive_level_post_metions = PostsSensitiveLevels.where(:user_id => p.id, :post_type=>"mention").collect{|am| am.sensitive_level}.first
+          sensitive_levels_post.push (sensitive_level_post_metions)
+        end
+        sensitive_level_post=sensitive_levels_post.max
+
+        # determine allowed aspects and disallowed
+        user_aspects=Aspect.where(:user_id => p.id).select(:id)
+        user_aspects= user_aspects.map{|e| [e.id]}
+        user_aspects= user_aspects.flatten(1)
+        user_aspects_ids = Aspect.where(:user_id => p.id).collect{|e| e.id}
+        disallowed_aspects=[ ]
+
+
+        if  relationship_type == "Family"
+          allowed_aspects= AllowedAspects.where(:user_id => p.id,:relationship_type =>"Family").collect{|e| e.allowed_aspectids}
+
+        elsif relationship_type == "Friends"
+          allowed_aspects= AllowedAspects.where(:user_id => p.id,:relationship_type =>"Friends").collect{|e| e.allowed_aspectids}
+
+        elsif relationship_type == "Work"
+          allowed_aspects= AllowedAspects.where(:user_id => p.id,:relationship_type =>"Work").collect{|e| e.allowed_aspectids}
+
+        elsif relationship_type == "Acquaintances"
+          allowed_aspects= AllowedAspects.where(:user_id => p.id,:relationship_type =>"Acquaintances").collect{|e| e.allowed_aspectids}
+        end
+        # when controller allows everyone (this not mean public)
+        if allowed_aspects.include? -1
+          user_aspects_ids.each do |aspects_id|
+            allowed_aspects.push(aspects_id)
+          end
+          disallowed_aspects= nil
+          # when controller dosen't allow anybody
+        elsif allowed_aspects.include? -2
+          user_aspects_ids.each do |aspects_id|
+            disallowed_aspects.push(aspects_id)
+          end
+          allowed_aspects= nil
+          # determine disallowed aspects according to selected allowed aspects
+        elsif user_aspects_ids.length != allowed_aspects.length
+          user_aspects_ids.each do |dis|
+            if allowed_aspects.exclude? (dis)
+              disallowed_aspects.push(dis)
+            end
+          end
+        end
+        # set policy of the stakeholder with id p
+        # when controller dosen't care which means our allowed and disallowed aspects
+        # in policy are nil then this associated controller is not involved in the collaborative decision
+        if allowed_aspects.exclude? -3
+          policy= {user_id: p.id , type_of_controller: "Stakeholder", sensitivity_of_post: sensitive_level_post, sensitivity_of_relationship: sensitive_level_between_stakeholder_and_owner ,allowed_aspects: allowed_aspects, disallowed_aspects: disallowed_aspects}
+          policies.push (policy)
+        end
+
+      end
+
+      # ------owner's policy---------
+
+      # determined allowed and disallowed aspects
+      disallowed_aspects=[ ]
+      owner_all_aspects= Aspect.where(:user_id => post.author_id).collect{|e| e.id}
+      allowed_aspects = post.aspect_ids
+                     # (params[:status_message][:aspect_ids]).map(&:to_i)
+      if (post.public == true) || (owner_all_aspects.length == allowed_aspects.length)
+      # params[:status_message][:aspect_ids].include?('public') || params[:status_message][:aspect_ids].include?('all_aspects') || owner_all_aspects.length == allowed_aspects.length
+        owner_all_aspects.each do |aspects_id|
+          allowed_aspects.push(aspects_id)
+        end
+        disallowed_aspects=nil
+      elsif owner_all_aspects.length != allowed_aspects.length
+        owner_all_aspects.each do |dis|
+          if allowed_aspects.exclude? (dis)
+            disallowed_aspects.push(dis)
+          end
+        end
+      end
+      # determined sensitive level of relationship type
+      ppl_owner_policy= Diaspora::Mentionable.people_from_string(post.text)
+      sensitive_level_between_owner_and_all_stakeholders=[]
+      ppl_owner_policy.each do |p|
+        # retrieve relationship type between owner and each stakeholders
+        relationship_type= rt(post.author_id,p)
+        relationship_type=relationship_type.to_s
+        # retrieve sensitive level of this relationship type from owner side
+        sensitive_level_between_owner_and_stakeholder= Aspect.where(:user_id => post.author_id, :name => relationship_type).collect{|e| e.sensitive_level}.first
+        sensitive_level_between_owner_and_all_stakeholders.push (sensitive_level_between_owner_and_stakeholder)
+      end
+      sensitive_level_of_relationship_type= sensitive_level_between_owner_and_all_stakeholders.max
+      # determined sensitive level of shared item
+      sensitive_levels_post= []
+      if params[:location_address].present?
+        sensitive_level_post_location = PostsSensitiveLevels.where(:user_id => params[:status_message][:author].id, :post_type=>"location").collect{|am| am.sensitive_level}.first
+        ensitive_levels_post.push (sensitive_level_post_location)
+      end
+      if params[:photos].present?
+        sensitive_level_post_photos = PostsSensitiveLevels.where(:user_id => params[:status_message][:author].id,:post_type=>"picture").collect{|am| am.sensitive_level}.first
+        sensitive_levels_post.push (sensitive_level_post_photos)
+      end
+      if ppl.length > 1 then
+        sensitive_level_post_metions = PostsSensitiveLevels.where(:user_id =>params[:status_message][:author].id,:post_type=>"mention").collect{|am| am.sensitive_level}.first
+        sensitive_levels_post.push (sensitive_level_post_metions)
+      end
+      sensitive_level_post_owner=sensitive_levels_post.max
+
+      policy= {user_id: params[:status_message][:author].id, type_of_controller: 'Owner', sensitivity_of_post: sensitive_level_post_owner, sensitivity_of_relationship: sensitive_level_of_relationship_type,allowed_aspects:allowed_aspects, disallowed_aspects:disallowed_aspects}
+      policies.push (policy)
+     return policies
+    end
     def checkPolicies(params)
-      # Initially no policies are violated
-      count_of_violated_policies = 0
+       # ------- Added by Raul ---------
+
+        # Initially no policies are violated
+        count_of_violated_policies = 0
 
       puts "---Checking the privacy policies---"
 
@@ -169,5 +404,17 @@ module Privacy
       return people
     end
 
+    def rt (u1,u2)
+      rtname=""
+      aspects = Aspect.where(:user_id => u1.id)
+      aspects.each do |a|
+        checker = Privacy::Checker.new
+        members= checker.people_from_aspect_ids([a.id])
+        if members.include? (u2)
+          rtname= a.to_s
+        end
+      end
+      return rtname
+    end
   end # Checker class
 end # Privacy module

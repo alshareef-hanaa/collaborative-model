@@ -247,10 +247,18 @@ class User < ActiveRecord::Base
   end
 
   def add_to_streams(post, aspects_to_insert)
-    aspects_to_insert.each do |aspect|
-      aspect << post
-    end
+      aspects_to_insert.each do |aspect|
+        aspect << post
+     end
   end
+
+  # ------- Adedd by Hanaa -----
+
+  def add_to_author_stream(post, x)
+      x << post
+  end
+
+  # ---------------------
 
   def aspects_from_ids(aspect_ids)
     if aspect_ids == "all" || aspect_ids == :all

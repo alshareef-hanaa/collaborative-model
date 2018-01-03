@@ -11,11 +11,19 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20150318174214) do
+ActiveRecord::Schema.define(:version => 20171229141218) do
 
   create_table "account_deletions", :force => true do |t|
     t.string  "diaspora_handle"
     t.integer "person_id"
+  end
+
+  create_table "allowed_aspects", :force => true do |t|
+    t.integer  "user_id"
+    t.string   "relationship_type"
+    t.integer  "allowed_aspectids"
+    t.datetime "created_at",        :null => false
+    t.datetime "updated_at",        :null => false
   end
 
   create_table "aspect_memberships", :force => true do |t|
@@ -42,21 +50,84 @@ ActiveRecord::Schema.define(:version => 20150318174214) do
   add_index "aspect_visibilities", ["shareable_id", "shareable_type"], :name => "index_aspect_visibilities_on_shareable_id_and_shareable_type"
 
   create_table "aspects", :force => true do |t|
-    t.string   "name",                               :null => false
-    t.integer  "user_id",                            :null => false
-    t.datetime "created_at",                         :null => false
-    t.datetime "updated_at",                         :null => false
-    t.boolean  "contacts_visible", :default => true, :null => false
+    t.string   "name",                                                             :null => false
+    t.integer  "user_id",                                                          :null => false
+    t.datetime "created_at",                                                       :null => false
+    t.datetime "updated_at",                                                       :null => false
+    t.boolean  "contacts_visible",                               :default => true, :null => false
     t.integer  "order_id"
+    t.decimal  "sensitive_level",  :precision => 5, :scale => 2, :default => 0.0
+    t.decimal  "trust_level",      :precision => 5, :scale => 2, :default => 0.0
   end
 
   add_index "aspects", ["user_id", "contacts_visible"], :name => "index_aspects_on_user_id_and_contacts_visible"
   add_index "aspects", ["user_id"], :name => "index_aspects_on_user_id"
 
+  create_table "aspects_levels_of_senstivity_and_trusts", :force => true do |t|
+    t.integer  "user_id"
+    t.string   "relationship_type"
+    t.decimal  "sensitive_level",   :precision => 5, :scale => 2, :default => 0.0
+    t.decimal  "trust_level",       :precision => 5, :scale => 2, :default => 0.0
+    t.datetime "created_at",                                                       :null => false
+    t.datetime "updated_at",                                                       :null => false
+  end
+
+  create_table "authorizations", :force => true do |t|
+    t.integer  "user_id"
+    t.integer  "o_auth_application_id"
+    t.string   "refresh_token"
+    t.string   "code"
+    t.string   "redirect_uri"
+    t.string   "nonce"
+    t.string   "scopes"
+    t.boolean  "code_used",             :default => false
+    t.datetime "created_at",                               :null => false
+    t.datetime "updated_at",                               :null => false
+  end
+
+  add_index "authorizations", ["o_auth_application_id"], :name => "index_authorizations_on_o_auth_application_id"
+  add_index "authorizations", ["user_id"], :name => "index_authorizations_on_user_id"
+
   create_table "blocks", :force => true do |t|
     t.integer "user_id"
     t.integer "person_id"
   end
+
+  create_table "chat_contacts", :force => true do |t|
+    t.integer "user_id",                     :null => false
+    t.string  "jid",                         :null => false
+    t.string  "name"
+    t.string  "ask",          :limit => 128
+    t.string  "subscription", :limit => 128, :null => false
+  end
+
+  add_index "chat_contacts", ["user_id", "jid"], :name => "index_chat_contacts_on_user_id_and_jid", :unique => true, :length => {"user_id"=>nil, "jid"=>190}
+
+  create_table "chat_fragments", :force => true do |t|
+    t.integer "user_id",                  :null => false
+    t.string  "root",      :limit => 256, :null => false
+    t.string  "namespace", :limit => 256, :null => false
+    t.text    "xml",                      :null => false
+  end
+
+  add_index "chat_fragments", ["user_id"], :name => "index_chat_fragments_on_user_id", :unique => true
+
+  create_table "chat_offline_messages", :force => true do |t|
+    t.string   "from",       :null => false
+    t.string   "to",         :null => false
+    t.text     "message",    :null => false
+    t.datetime "created_at", :null => false
+  end
+
+  create_table "comment_signatures", :id => false, :force => true do |t|
+    t.integer "comment_id",         :null => false
+    t.text    "author_signature",   :null => false
+    t.integer "signature_order_id", :null => false
+    t.text    "additional_data"
+  end
+
+  add_index "comment_signatures", ["comment_id"], :name => "index_comment_signatures_on_comment_id", :unique => true
+  add_index "comment_signatures", ["signature_order_id"], :name => "comment_signatures_signature_orders_id_fk"
 
   create_table "comments", :force => true do |t|
     t.text     "text",                                                      :null => false
@@ -87,6 +158,13 @@ ActiveRecord::Schema.define(:version => 20150318174214) do
   add_index "contacts", ["person_id"], :name => "index_contacts_on_person_id"
   add_index "contacts", ["user_id", "person_id"], :name => "index_contacts_on_user_id_and_person_id", :unique => true
 
+  create_table "controllers_resharing_votings", :force => true do |t|
+    t.integer  "user_id"
+    t.integer  "allowed_aspects_ids"
+    t.datetime "created_at",          :null => false
+    t.datetime "updated_at",          :null => false
+  end
+
   create_table "conversation_visibilities", :force => true do |t|
     t.integer  "conversation_id",                :null => false
     t.integer  "person_id",                      :null => false
@@ -108,6 +186,14 @@ ActiveRecord::Schema.define(:version => 20150318174214) do
   end
 
   add_index "conversations", ["author_id"], :name => "conversations_author_id_fk"
+
+  create_table "disallowed_aspects", :force => true do |t|
+    t.integer  "user_id"
+    t.string   "relationship_type"
+    t.integer  "disallowed_aspectids"
+    t.datetime "created_at",           :null => false
+    t.datetime "updated_at",           :null => false
+  end
 
   create_table "invitation_codes", :force => true do |t|
     t.string   "token"
@@ -133,6 +219,16 @@ ActiveRecord::Schema.define(:version => 20150318174214) do
   add_index "invitations", ["aspect_id"], :name => "index_invitations_on_aspect_id"
   add_index "invitations", ["recipient_id"], :name => "index_invitations_on_recipient_id"
   add_index "invitations", ["sender_id"], :name => "index_invitations_on_sender_id"
+
+  create_table "like_signatures", :id => false, :force => true do |t|
+    t.integer "like_id",            :null => false
+    t.text    "author_signature",   :null => false
+    t.integer "signature_order_id", :null => false
+    t.text    "additional_data"
+  end
+
+  add_index "like_signatures", ["like_id"], :name => "index_like_signatures_on_like_id", :unique => true
+  add_index "like_signatures", ["signature_order_id"], :name => "like_signatures_signature_orders_id_fk"
 
   create_table "likes", :force => true do |t|
     t.boolean  "positive",                              :default => true
@@ -208,6 +304,43 @@ ActiveRecord::Schema.define(:version => 20150318174214) do
   add_index "notifications", ["target_id"], :name => "index_notifications_on_target_id"
   add_index "notifications", ["target_type", "target_id"], :name => "index_notifications_on_target_type_and_target_id"
 
+  create_table "o_auth_access_tokens", :force => true do |t|
+    t.integer  "authorization_id"
+    t.string   "token"
+    t.datetime "expires_at"
+    t.datetime "created_at",       :null => false
+    t.datetime "updated_at",       :null => false
+  end
+
+  add_index "o_auth_access_tokens", ["authorization_id"], :name => "index_o_auth_access_tokens_on_authorization_id"
+  add_index "o_auth_access_tokens", ["token"], :name => "index_o_auth_access_tokens_on_token", :unique => true, :length => {"token"=>191}
+
+  create_table "o_auth_applications", :force => true do |t|
+    t.integer  "user_id"
+    t.string   "client_id"
+    t.string   "client_secret"
+    t.string   "client_name"
+    t.text     "redirect_uris"
+    t.string   "response_types"
+    t.string   "grant_types"
+    t.string   "application_type",           :default => "web"
+    t.string   "contacts"
+    t.string   "logo_uri"
+    t.string   "client_uri"
+    t.string   "policy_uri"
+    t.string   "tos_uri"
+    t.string   "sector_identifier_uri"
+    t.string   "token_endpoint_auth_method"
+    t.text     "jwks"
+    t.string   "jwks_uri"
+    t.boolean  "ppid",                       :default => false
+    t.datetime "created_at",                                    :null => false
+    t.datetime "updated_at",                                    :null => false
+  end
+
+  add_index "o_auth_applications", ["client_id"], :name => "index_o_auth_applications_on_client_id", :unique => true, :length => {"client_id"=>191}
+  add_index "o_auth_applications", ["user_id"], :name => "index_o_auth_applications_on_user_id"
+
   create_table "o_embed_caches", :force => true do |t|
     t.string "url",  :limit => 1024, :null => false
     t.text   "data",                 :null => false
@@ -238,15 +371,17 @@ ActiveRecord::Schema.define(:version => 20150318174214) do
   add_index "participations", ["target_id", "target_type", "author_id"], :name => "index_participations_on_target_id_and_target_type_and_author_id"
 
   create_table "people", :force => true do |t|
-    t.string   "guid",                                     :null => false
-    t.text     "url",                                      :null => false
-    t.string   "diaspora_handle",                          :null => false
-    t.text     "serialized_public_key",                    :null => false
+    t.string   "guid",                                                                   :null => false
+    t.text     "url",                                                                    :null => false
+    t.string   "diaspora_handle",                                                        :null => false
+    t.text     "serialized_public_key",                                                  :null => false
     t.integer  "owner_id"
-    t.datetime "created_at",                               :null => false
-    t.datetime "updated_at",                               :null => false
-    t.boolean  "closed_account",        :default => false
-    t.integer  "fetch_status",          :default => 0
+    t.datetime "created_at",                                                             :null => false
+    t.datetime "updated_at",                                                             :null => false
+    t.boolean  "closed_account",                                      :default => false
+    t.integer  "fetch_status",                                        :default => 0
+    t.decimal  "sensitive_level",       :precision => 5, :scale => 2, :default => 0.0
+    t.decimal  "tr_threshold",          :precision => 5, :scale => 2, :default => 0.0
   end
 
   add_index "people", ["diaspora_handle"], :name => "index_people_on_diaspora_handle", :unique => true
@@ -291,6 +426,16 @@ ActiveRecord::Schema.define(:version => 20150318174214) do
   end
 
   add_index "poll_answers", ["poll_id"], :name => "index_poll_answers_on_poll_id"
+
+  create_table "poll_participation_signatures", :id => false, :force => true do |t|
+    t.integer "poll_participation_id", :null => false
+    t.text    "author_signature",      :null => false
+    t.integer "signature_order_id",    :null => false
+    t.text    "additional_data"
+  end
+
+  add_index "poll_participation_signatures", ["poll_participation_id"], :name => "index_poll_participation_signatures_on_poll_participation_id", :unique => true
+  add_index "poll_participation_signatures", ["signature_order_id"], :name => "poll_participation_signatures_signature_orders_id_fk"
 
   create_table "poll_participations", :force => true do |t|
     t.integer  "poll_answer_id",          :null => false
@@ -363,6 +508,25 @@ ActiveRecord::Schema.define(:version => 20150318174214) do
   add_index "posts", ["tweet_id"], :name => "index_posts_on_tweet_id"
   add_index "posts", ["type", "pending", "id"], :name => "index_posts_on_type_and_pending_and_id"
 
+  create_table "posts_sensitive_levels", :force => true do |t|
+    t.integer  "user_id"
+    t.string   "post_type"
+    t.decimal  "sensitive_level", :precision => 5, :scale => 2, :default => 0.0
+    t.datetime "created_at",                                                     :null => false
+    t.datetime "updated_at",                                                     :null => false
+  end
+
+  create_table "ppid", :force => true do |t|
+    t.integer "o_auth_application_id"
+    t.integer "user_id"
+    t.string  "guid",                  :limit => 32
+    t.string  "string",                :limit => 32
+    t.string  "identifier"
+  end
+
+  add_index "ppid", ["o_auth_application_id"], :name => "index_ppid_on_o_auth_application_id"
+  add_index "ppid", ["user_id"], :name => "index_ppid_on_user_id"
+
   create_table "privacy_policies", :force => true do |t|
     t.integer  "user_id"
     t.string   "shareable_type"
@@ -428,6 +592,15 @@ ActiveRecord::Schema.define(:version => 20150318174214) do
     t.datetime "updated_at", :null => false
   end
 
+  create_table "sensitive_level_policies", :force => true do |t|
+    t.string  "relationship_type"
+    t.integer "user_id"
+    t.string  "sensitive_level"
+    t.integer "allowed_aspectid"
+  end
+
+  add_index "sensitive_level_policies", ["user_id"], :name => "sensitive_level_policies_user_id_uindex", :unique => true
+
   create_table "services", :force => true do |t|
     t.string   "type",          :limit => 127, :null => false
     t.integer  "user_id",                      :null => false
@@ -455,6 +628,25 @@ ActiveRecord::Schema.define(:version => 20150318174214) do
   add_index "share_visibilities", ["shareable_id", "shareable_type", "contact_id"], :name => "shareable_and_contact_id"
   add_index "share_visibilities", ["shareable_id", "shareable_type", "hidden", "contact_id"], :name => "shareable_and_hidden_and_contact_id"
   add_index "share_visibilities", ["shareable_id"], :name => "index_post_visibilities_on_post_id"
+
+  create_table "shared_privacy_policies", :force => true do |t|
+    t.integer  "user_id"
+    t.integer  "allowed_aspectid_when_owner_friend"
+    t.integer  "allowed_aspectid_when_owner_family"
+    t.integer  "allowed_aspectid_when_owner_acquaintances"
+    t.integer  "allowed_aspectid_when_owner_coworker"
+    t.decimal  "sensitive_level_of_metions_post",           :precision => 5, :scale => 2, :default => 0.0
+    t.decimal  "sensitive_level_of_locations_post",         :precision => 5, :scale => 2, :default => 0.0
+    t.decimal  "sensitive_level_of_pic_post",               :precision => 5, :scale => 2, :default => 0.0
+    t.datetime "created_at",                                                                               :null => false
+    t.datetime "updated_at",                                                                               :null => false
+  end
+
+  create_table "signature_orders", :force => true do |t|
+    t.string "order", :null => false
+  end
+
+  add_index "signature_orders", ["order"], :name => "index_signature_orders_on_order", :unique => true, :length => {"order"=>191}
 
   create_table "simple_captcha_data", :force => true do |t|
     t.string   "key",        :limit => 40
@@ -552,6 +744,12 @@ ActiveRecord::Schema.define(:version => 20150318174214) do
 
   add_foreign_key "aspect_visibilities", "aspects", name: "aspect_visibilities_aspect_id_fk", dependent: :delete
 
+  add_foreign_key "authorizations", "o_auth_applications", name: "fk_rails_e166644de5"
+  add_foreign_key "authorizations", "users", name: "fk_rails_4ecef5b8c5"
+
+  add_foreign_key "comment_signatures", "comments", name: "comment_signatures_comment_id_fk", dependent: :delete
+  add_foreign_key "comment_signatures", "signature_orders", name: "comment_signatures_signature_orders_id_fk"
+
   add_foreign_key "comments", "people", name: "comments_author_id_fk", column: "author_id", dependent: :delete
 
   add_foreign_key "contacts", "people", name: "contacts_person_id_fk", dependent: :delete
@@ -564,6 +762,9 @@ ActiveRecord::Schema.define(:version => 20150318174214) do
   add_foreign_key "invitations", "users", name: "invitations_recipient_id_fk", column: "recipient_id", dependent: :delete
   add_foreign_key "invitations", "users", name: "invitations_sender_id_fk", column: "sender_id", dependent: :delete
 
+  add_foreign_key "like_signatures", "likes", name: "like_signatures_like_id_fk", dependent: :delete
+  add_foreign_key "like_signatures", "signature_orders", name: "like_signatures_signature_orders_id_fk"
+
   add_foreign_key "likes", "people", name: "likes_author_id_fk", column: "author_id", dependent: :delete
 
   add_foreign_key "messages", "conversations", name: "messages_conversation_id_fk", dependent: :delete
@@ -571,7 +772,17 @@ ActiveRecord::Schema.define(:version => 20150318174214) do
 
   add_foreign_key "notification_actors", "notifications", name: "notification_actors_notification_id_fk", dependent: :delete
 
+  add_foreign_key "o_auth_access_tokens", "authorizations", name: "fk_rails_5debabcff3"
+
+  add_foreign_key "o_auth_applications", "users", name: "fk_rails_ad75323da2"
+
+  add_foreign_key "poll_participation_signatures", "poll_participations", name: "poll_participation_signatures_poll_participation_id_fk", dependent: :delete
+  add_foreign_key "poll_participation_signatures", "signature_orders", name: "poll_participation_signatures_signature_orders_id_fk"
+
   add_foreign_key "posts", "people", name: "posts_author_id_fk", column: "author_id", dependent: :delete
+
+  add_foreign_key "ppid", "o_auth_applications", name: "fk_rails_150457f962"
+  add_foreign_key "ppid", "users", name: "fk_rails_e6b8e5264f"
 
   add_foreign_key "profiles", "people", name: "profiles_person_id_fk", dependent: :delete
 

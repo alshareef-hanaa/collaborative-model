@@ -63,6 +63,8 @@ class Person < ActiveRecord::Base
   validates :serialized_public_key, :presence => true
   validates :diaspora_handle, :uniqueness => true
 
+  attr_accessible :sensitive_level, :tr_threshold
+
   scope :searchable, joins(:profile).where(:profiles => {:searchable => true})
   scope :remote, where('people.owner_id IS NULL')
   scope :local, where('people.owner_id IS NOT NULL')
@@ -309,6 +311,17 @@ class Person < ActiveRecord::Base
     user.contacts.receiving.where(:person_id => self.id).first if user
   end
 
+  # def << (shareable)
+  #   case shareable
+  #     when Post
+  #       self.posts << shareable
+  #     when Photo
+  #       self.photos << shareable
+  #     else
+  #       raise "Unknown shareable type '#{shareable.class.base_class.to_s}'"
+  #   end
+  # end
+
   # @param person [Person]
   # @param url [String]
   def update_url(url)
@@ -344,4 +357,6 @@ class Person < ActiveRecord::Base
     Webfinger.new(self.diaspora_handle).fetch
     self.reload
   end
+
+
 end
