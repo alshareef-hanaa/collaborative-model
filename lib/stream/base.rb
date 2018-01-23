@@ -45,89 +45,28 @@ class Stream::Base
       # -------- Original code -------------
       # We iterate over all to posts which tentatively will be posted
       posts.each do |p|
-
-        # p << {reshareable: false}
-        # p[:public] = false
-
-        # filter based on algorithm 1 & 2& 3
-        ppl= Diaspora::Mentionable.people_from_string(p.text)
-        if (p.author_id == self.user.id) || (ppl.include?(self.user.id))
-          permitted_mentioned_users_to_share= controllersharing(p)
-          if permitted_mentioned_users_to_share.include?(self.user.id)
-            p[:public] = true
-           else
-             p[:public] = false
-          end
-          returningArray.push(p)
-        else
-          permitted_users_to_viwe= permittedanddeniedaccessors(p)
-          if permitted_users_to_viwe.include?(self.user.id)
-            permitted_viwer_to_share = accessorsharing(p)
-            if permitted_viwer_to_share.include?(self.user.id)
-              p[:public] = true
-            else
-              p[:public] = false
-            end
-            returningArray.push(p)
-          else
-            puts "not adding this "
-          end
-        end
-
-      end
-
-        # ppl_owner_policy=ppl_owner_policy.map{|e| [e.owner_id]}.flatten(1)
-        # if (p.author_id == self.user.id) || (ppl.include?(self.user.id))
-
-        # # If the author of the post is not the user accessing the post we
-        # # proceed to check if (s)he has access to all of them
-        # if p.author_id != self.user.id
-        #   # Since we are only protecting the user's location if the post does
-        # #   # not contain a location can be shown
-        #   if p.address == nil
-        #     returningArray.push(p)
-        #     # Otherwise we proceed to check
+        # ppl= Diaspora::Mentionable.people_from_string(p.text).collect{|ppl_id| ppl_id.owner.id}
+        # if (p.author_id == self.user.id)  || (ppl.include?(self.user.id))
+        #   permitted_mentioned_users_to_share= controllersharing(p)
+        #   if permitted_mentioned_users_to_share.include?(self.user.id)
+        #       p[:public] = true
+        #      else
+        #        p[:public] = nil
         #     end
-        #   else
-        #     # We get all the users mentioned in the post
-        #     ppl = Diaspora::Mentionable.people_from_string(p.text)
-        #     # We set a counter to 0
-        #     count = 0
-        #     # We iterate over all the mentioned users
-        #     ppl.each do |person|
-        #       # We check the privacy policy about the location of the user
-        #       protecting_loc = PrivacyPolicy.where(:user_id => person.owner_id,
-        #                                            :shareable_type => "Location")
-        #       checker = Privacy::Checker.new
-        #       people_disallowed = checker.people_from_aspect_ids(protecting_loc.collect{|pp| pp.allowed_aspect})
-        #       # If we get any result it means that the users is protecting her
-        #       # location. And (&&) also we check that the user requesting the
-        #       # post is not the one mentioned
-        #
-        #       if people_disallowed.include?(self.user.person_id) && protecting_loc.first.hide
-        #         # if (protecting_loc != nil) && (person.owner_id != self.user.id)
-        #         # Therefore we increment th count
-        #         count = count + 1
-        #         # returningArray.push(pTemp)
-        #       end
-        #     end
-        #     # Finally if there were no users protecting their location we add
-        #     # the post to the posts to be shown
-        #     if count == 0
-        #       returningArray.push(p)
-        #     else
-        #       puts "Not adding the post"
-        #     end
-        #   end
-        #   # If the author of the post is the one checking it we added to the
-        #   # resulset since this user already knows the information.
+        returningArray.push(p)
         # else
-        #   returningArray.push(p)
-        # end
+        #   yy= permittedAndDeniedAccessors(p)
+        #   if yy.include?(self.user.id)
+        #     returningArray.push(p)
+        #   else
+        #     puts "not adding this "
+        #   end
+        #  end
+
       end
     end
-     returningArray
-    end
+    returningArray
+  end
 
   # Algorithm 1
    def permittedanddeniedaccessors (post)
@@ -308,38 +247,33 @@ class Stream::Base
     def controllersharing(post)
       permitted_controllers_to_reshare=[]
       denied_controllers_to_reshare=[]
-      vote_permit=[]
-      vote_deny=[]
-      permitted_decision=0
-      denied_decision=0
       vote=0
-
       controllers= Diaspora::Mentionable.people_from_string(post.text)
       controllers=controllers.map{|e| [e.owner_id]}.flatten(1)
       controllers.push(post.author_id)
 
       controllers.each do |cid|
-
+        vote_permit=[]
+        vote_deny=[]
+        permitted_decision=0
+        denied_decision=0
        rest_of_controllers=controllers-[cid]
        # retrieve votes of cid
         rest_of_controllers.each do |voter|
-          # which kind of relation looking for from where to where ?? it is the type of relationship cid has in voter social network
+          # which kind of relation looking for from where to where ?? it is the type of relationship cid has in voter social network (by which type of relationship voter follows cid)
           relationship_type= rt1(voter,cid)
           relationship_type=relationship_type.to_s
           if relationship_type.nil? || relationship_type.empty?
             vote=0
           else
-            id_of_aspect = Aspect.where(:user_id => voter, :name => relationship_type ).select(:id)
+            id_of_aspect = Aspect.where(:user_id => voter, :name => relationship_type ).collect{|id_of_aspect| id_of_aspect.id}
             allwoed_aspects_ids_to_reshare= ControllersResharingVoting.where(:user_id => voter).collect{|e| e.allowed_aspects_ids}
-
-            if allwoed_aspects_ids_to_reshare.include? (id_of_aspect) ||  allwoed_aspects_ids_to_reshare.include? (-3) || allwoed_aspects_ids_to_reshare.include?(-1)
+             if allwoed_aspects_ids_to_reshare.include? (id_of_aspect[0]) || allwoed_aspects_ids_to_reshare.map(&:to_i).include?-3 || allwoed_aspects_ids_to_reshare.map(&:to_i).include?-1
                  vote_permit.push(voter)
             else
                vote_deny.push(voter)
             end
-
           end
-
           end
 
         if rest_of_controllers.size == vote_permit.size
@@ -357,13 +291,14 @@ class Stream::Base
             trv=voter_trust_level(voter_d,controllers)
             denied_decision += trv
           end
-        end
 
-      if permitted_decision >= denied_decision
-        permitted_controllers_to_reshare.push(cid)
-      else
-        denied_controllers_to_reshare.push(cid)
-      end
+          if permitted_decision >= denied_decision
+            permitted_controllers_to_reshare.push(cid)
+          else
+            denied_controllers_to_reshare.push(cid)
+          end
+
+        end
    end
    return permitted_controllers_to_reshare
 end

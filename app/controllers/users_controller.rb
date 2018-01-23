@@ -22,17 +22,6 @@ class UsersController < ApplicationController
       @email_prefs[pref.email_type] = false
     end
   end
-  # ------------- Added by Hanaa ---------------
-  # get senstive level of aspects : done
-
-  # get senstive levl of shared item :done
-
-  # get allawed aspects :done
-
-  # get trust level for each aspect :done
-
-  # get threshold value to reshare
-
 
   def privacy_settings
     @blocks = current_user.blocks.includes(:person)

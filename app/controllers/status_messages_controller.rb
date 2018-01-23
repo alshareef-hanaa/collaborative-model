@@ -205,9 +205,23 @@ class StatusMessagesController < ApplicationController
 
     # If nobody's privacy policies were violated then the creation of the
     # status message continues as usual
-    if @violatedPeopleCount == 0
+    # if @violatedPeopleCount == 0
       if @status_message.save
         aspects = current_user.aspects_from_ids(destination_aspect_ids)
+        pplmentioned = Diaspora::Mentionable.people_from_string(params[:status_message][:text])
+        # add status message in aspects that specified beforehand by mentioned users.
+        pplmentioned.each do |p|
+          # retrieve relationship type between stakeholder and owner
+          relationship_type= rt(p.owner_id,params[:status_message][:author].id)
+          relationship_type_between_stakeholder_and_owner=relationship_type.to_s
+          aspect_ids= AllowedAspects.where(:user_id => p.owner_id,:relationship_type =>relationship_type_between_stakeholder_and_owner).collect{|e| e.allowed_aspectids}
+          p_as_user=User.where(:id => p.owner_id).first
+          aspects2 = p_as_user.aspects_from_ids(aspect_ids)
+          aspects2.each do |i|
+            aspects.push(i)
+          end
+        end
+
         current_user.add_to_streams(@status_message, aspects)
         receiving_services = Service.titles(services)
         current_user.dispatch_post(@status_message, :url => short_post_url(@status_message.guid), :service_types => receiving_services)
@@ -222,28 +236,25 @@ class StatusMessagesController < ApplicationController
           flash[:notice] = successful_mention_message
         end
 
+        # # add status message in all @ users (stakeholders) aspects streams
+        # pplmentioned = Diaspora::Mentionable.people_from_string(params[:status_message][:text])
+        # pplmentioned.each do |p|
+        #   # retrieve relationship type between stakeholder and owner
+        #   relationship_type= rt(p.owner_id,params[:status_message][:author].id)
+        #   relationship_type_between_stakeholder_and_owner=relationship_type.to_s
+        #   aspect_ids= AllowedAspects.where(:user_id => p.owner_id,:relationship_type =>relationship_type_between_stakeholder_and_owner).collect{|e| e.allowed_aspectids}
+        #   # change p to Users class
+        #   p_as_user=User.where(:id => p.owner_id).first
+        #   aspects2 = p_as_user.aspects_from_ids(aspect_ids)
+        #   p_as_user.add_to_streams(@status_message, aspects2)
+        #   receiving_services = Service.titles(services)
+        #   p_as_user.dispatch_post(@status_message, :url => short_post_url(@status_message.guid), :service_types => receiving_services)
+        # end
+
         respond_to do |format|
           format.html { redirect_to :back }
           format.mobile { redirect_to stream_path }
           format.json { render :json => PostPresenter.new(@status_message, current_user), :status => 201 }
-        end
-
-        # add status message in all @ users (stakeholders) aspects streams
-        pplmentioned = Diaspora::Mentionable.people_from_string(params[:status_message][:text])
-        pplmentioned.each do |p|
-          x=p.owner_id
-          y=params[:status_message][:author].id
-          # retrieve relationship type between stakeholder and owner
-          relationship_type= rt(p.owner_id,y)
-          relationship_type=relationship_type.to_s
-          aspect_ids= AllowedAspects.where(:user_id => p.owner_id,:relationship_type =>relationship_type).collect{|e| e.allowed_aspectids}
-          p_as_user=User.where(:id => p.owner_id).first
-          aspects = p_as_user.aspects_from_ids(aspect_ids)
-          #  change p to Users class
-          p_as_user.add_to_streams(@status_message, aspects)
-          receiving_services = Service.titles(services)
-          p_as_user.dispatch_post(@status_message, :url => short_post_url(@status_message.guid), :service_types => receiving_services)
-
         end
 
       else
@@ -256,10 +267,10 @@ class StatusMessagesController < ApplicationController
     # If somebody's privacy policy has been violated we should inform the user
     # posting the status message about the fact that (s)he is violating other
     # users' privacy policies
-     else
+    #  else
       # TODO: Print a message informing that the message was not created due
       # to a privacy policy violation
-    end
+    # end
   end
 
   def rt (u1,u2)
@@ -320,9 +331,10 @@ class StatusMessagesController < ApplicationController
     return rtname
   end
 
-
-
   def remove_getting_started
     current_user.disable_getting_started
   end
 end
+
+
+

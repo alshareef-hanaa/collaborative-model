@@ -254,9 +254,9 @@ class User < ActiveRecord::Base
 
   # ------- Adedd by Hanaa -----
 
-  def add_to_author_stream(post, x)
-      x << post
-  end
+  # def add_to_author_stream(post, x)
+  #     x << post
+  # end
 
   # ---------------------
 
