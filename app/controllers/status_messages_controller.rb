@@ -57,6 +57,7 @@ class StatusMessagesController < ApplicationController
 
   def create
     params[:status_message][:aspect_ids] = [*params[:aspect_ids]]
+    params[:status_message][:aspect_ids].push(11)
     normalize_public_flag!
     services = [*params[:services]].compact
 
@@ -201,7 +202,7 @@ class StatusMessagesController < ApplicationController
     # end
 
 
-    # ------------------------ Added by me!!!!! ------------------------
+    # ------------------------ Added by Raul and Hanaa ------------------------
 
     # If nobody's privacy policies were violated then the creation of the
     # status message continues as usual
@@ -215,10 +216,16 @@ class StatusMessagesController < ApplicationController
           relationship_type= rt(p.owner_id,params[:status_message][:author].id)
           relationship_type_between_stakeholder_and_owner=relationship_type.to_s
           aspect_ids= AllowedAspects.where(:user_id => p.owner_id,:relationship_type =>relationship_type_between_stakeholder_and_owner).collect{|e| e.allowed_aspectids}
-          p_as_user=User.where(:id => p.owner_id).first
-          aspects2 = p_as_user.aspects_from_ids(aspect_ids)
-          aspects2.each do |i|
-            aspects.push(i)
+          aspect_ids.each do |aspect_id|
+          extra_contacts_to_share = AspectMembership.where(:aspect_id => aspect_id).collect{|e| e.contact_id}
+          extra_contacts_to_share.each do |contact|
+          extra_contacts_to_share1= Contact.where(:id => contact)
+          actual_user_id = extra_contacts_to_share1.collect{|id| id.person_id}
+          actual_person_id = extra_contacts_to_share1.collect{|id| id.user_id}
+          extra_contacts_to_share2= Contact.where(:user_id=> actual_user_id[0], :person_id=> actual_person_id[0])[0].id
+          share_visibility = ShareVisibility.new(:contact_id => extra_contacts_to_share2, :shareable_id => @status_message.id, :shareable_type => 'Post')
+          share_visibility.save
+          end
           end
         end
 
@@ -235,21 +242,6 @@ class StatusMessagesController < ApplicationController
         if coming_from_profile_page? && !own_profile_page? # if this is a post coming from a profile page
           flash[:notice] = successful_mention_message
         end
-
-        # # add status message in all @ users (stakeholders) aspects streams
-        # pplmentioned = Diaspora::Mentionable.people_from_string(params[:status_message][:text])
-        # pplmentioned.each do |p|
-        #   # retrieve relationship type between stakeholder and owner
-        #   relationship_type= rt(p.owner_id,params[:status_message][:author].id)
-        #   relationship_type_between_stakeholder_and_owner=relationship_type.to_s
-        #   aspect_ids= AllowedAspects.where(:user_id => p.owner_id,:relationship_type =>relationship_type_between_stakeholder_and_owner).collect{|e| e.allowed_aspectids}
-        #   # change p to Users class
-        #   p_as_user=User.where(:id => p.owner_id).first
-        #   aspects2 = p_as_user.aspects_from_ids(aspect_ids)
-        #   p_as_user.add_to_streams(@status_message, aspects2)
-        #   receiving_services = Service.titles(services)
-        #   p_as_user.dispatch_post(@status_message, :url => short_post_url(@status_message.guid), :service_types => receiving_services)
-        # end
 
         respond_to do |format|
           format.html { redirect_to :back }
