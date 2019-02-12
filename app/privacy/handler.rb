@@ -167,7 +167,7 @@ module Privacy
         end
 
         def reset_policies_of_aspect_trust_level(uid, relationship_type)
-          AspectsLevelsOfSenstivityAndTrust.where(:user_id => uid,:relationship_type => relationship_type).update_all(:trust_level => 0.25)
+          AspectsLevelsOfSenstivityAndTrust.where(:user_id => uid,:relationship_type => relationship_type).update_all(:trust_level => 0.00)
         end
 
        # trust threshold value to able to reshare
@@ -177,7 +177,7 @@ module Privacy
         end
 
         def reset_policies_of_threshold_trust_level(uid)
-          Person.where(:id => uid).update_all(:tr_threshold => 0.25)
+          Person.where(:id => uid).update_all(:tr_threshold => 0.00)
         end
 
      #  mentioned users who are allowed to reshare

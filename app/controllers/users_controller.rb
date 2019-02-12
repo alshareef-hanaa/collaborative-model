@@ -26,10 +26,10 @@ class UsersController < ApplicationController
   def privacy_settings
     @blocks = current_user.blocks.includes(:person)
     @aspects = Aspect.where(:user_id => current_user.id)
-    @disallowed_options={"I do not care"=> -3, "Everyone does not belong to your aspects list"=> -4, "Aspects that did not select as allowed "=> -5,"Everyone"=> -6 }
-    @sensitive_options={"Minimum"=> 0.01,"Low"=> 0.25, "Mid"=> 0.50, "High"=> 1.00}
-    @trust_level_options={"Low"=> 0.25, "Mid"=> 0.50, "High"=> 1.00}
-    @trust_level_options1={"No trust"=>0.01, "Low"=> 0.25, "Mid"=> 0.50, "High"=> 1.00}
+    @disallowed_options={"I do not care"=> -3, "Everyone does not belong to your aspects list"=> -4, "Aspects that are not selected as allowed "=> -5,"Everyone"=> -6 }
+    @sensitive_options={"High"=> 1.0, "Mid"=> 0.5,"Low"=> 0.25,"None"=> 0.0}
+    @trust_level_options={"None"=> 0.0, "Low"=> 0.25, "Mid"=> 0.5, "High"=> 0.75, "Highest"=> 1.0 }
+    @trust_level_options1={"None"=>0.0, "Low"=> 0.25, "Mid"=> 0.5, "High"=> 0.75,"Highest"=> 1.0}
 
     # Create a privacy handler to add or remove privacy policies
     handler = Privacy::Handler.new
@@ -174,8 +174,8 @@ class UsersController < ApplicationController
     # First location's post
     location_posts_sensitive_level=PostsSensitiveLevels.where(:user_id => current_user.id, :post_type => "location").collect{|e| e.sensitive_level}.first
     location_posts_sensitive_level=location_posts_sensitive_level.to_s
-    if location_posts_sensitive_level == "0.01"
-      @selected_sl_ption_locaation_posts= "Minimum"
+    if location_posts_sensitive_level == "0.0"
+      @selected_sl_ption_locaation_posts= "None"
     elsif location_posts_sensitive_level== "0.25"
       @selected_sl_ption_locaation_posts="Low"
     elsif location_posts_sensitive_level== "0.5"
@@ -187,8 +187,8 @@ class UsersController < ApplicationController
     # Second pic post
     pic_posts_sensitive_level=PostsSensitiveLevels.where(:user_id => current_user.id, :post_type => "picture").collect{|e| e.sensitive_level}.first
     pic_posts_sensitive_level = pic_posts_sensitive_level.to_s
-    if pic_posts_sensitive_level == "0.01"
-      @selected_sl_option_picture_posts= "Minimum"
+    if pic_posts_sensitive_level == "0.0"
+      @selected_sl_option_picture_posts= "None"
     elsif pic_posts_sensitive_level== "0.25"
       @selected_sl_option_picture_posts="Low"
     elsif pic_posts_sensitive_level== "0.5"
@@ -200,8 +200,8 @@ class UsersController < ApplicationController
     # Third @ post
     mention_posts_sensitive_level=PostsSensitiveLevels.where(:user_id => current_user.id, :post_type => "mention").collect{|e| e.sensitive_level}.first
     mention_posts_sensitive_level = mention_posts_sensitive_level.to_s
-      if mention_posts_sensitive_level == "0.01"
-        @selected_sl_option_mention_posts= "Minimum"
+      if mention_posts_sensitive_level == "0.0"
+        @selected_sl_option_mention_posts= "None"
       elsif mention_posts_sensitive_level== "0.25"
         @selected_sl_option_mention_posts="Low"
       elsif mention_posts_sensitive_level== "0.5"
@@ -210,7 +210,7 @@ class UsersController < ApplicationController
         @selected_sl_option_mention_posts="High"
       end
 
-    # ------- Get sensitive level of aspects -------
+    # ------- Get sensitive level of aspects -------  ******I don't use this any more (need to be removed)******
     #  Friends
      friends_aspects_sensitive_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "Friends").collect{|e| e.sensitive_level}.first
      friends_aspects_sensitive_level=friends_aspects_sensitive_level.to_s
@@ -218,7 +218,7 @@ class UsersController < ApplicationController
        @selected_sl_ption_friends_aspect="Minimum"
      elsif friends_aspects_sensitive_level== "0.25"
        @selected_sl_ption_friends_aspect="Low"
-     elsif friends_aspects_sensitive_level== "0.5"
+     elsif friends_aspects_sensitive_level== "0.50"
        @selected_sl_ption_friends_aspect="Mid"
      elsif friends_aspects_sensitive_level== "1.0"
        @selected_sl_ption_friends_aspect="High"
@@ -231,7 +231,7 @@ class UsersController < ApplicationController
       @selected_sl_option_family_aspect="Minimum"
     elsif family_aspects_sensitive_level== "0.25"
       @selected_sl_option_family_aspect="Low"
-    elsif family_aspects_sensitive_level== "0.5"
+    elsif family_aspects_sensitive_level== "0.50"
       @selected_sl_option_family_aspect="Mid"
     elsif family_aspects_sensitive_level== "1.0"
       @selected_sl_option_family_aspect="High"
@@ -244,7 +244,7 @@ class UsersController < ApplicationController
       @selected_sl_option_work_aspect="Minimum"
     elsif work_aspects_sensitive_level== "0.25"
       @selected_sl_option_work_aspect="Low"
-    elsif work_aspects_sensitive_level== "0.5"
+    elsif work_aspects_sensitive_level== "0.50"
       @selected_sl_option_work_aspect="Mid"
     elsif work_aspects_sensitive_level== "1.0"
       @selected_sl_option_work_aspect="High"
@@ -257,20 +257,20 @@ class UsersController < ApplicationController
       @selected_sl_option_acquaintances_aspect="Minium"
     elsif acquaintances_aspects_sensitive_level== "0.25"
       @selected_sl_option_acquaintances_aspect="Low"
-    elsif acquaintances_aspects_sensitive_level== "0.5"
+    elsif acquaintances_aspects_sensitive_level== "0.50"
       @selected_sl_option_acquaintances_aspect="Mid"
     elsif acquaintances_aspects_sensitive_level== "1.0"
       @selected_sl_option_acquaintances_aspect="High"
     end
 
     # Users who are not belong to your aspects list
-    users_not_in_aspects_list_sensitive_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "not in aspects list").collect{|e| e.sensitive_level}.first
+    users_not_in_aspects_list_sensitive_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "notaspects").collect{|e| e.sensitive_level}.first
     users_not_in_aspects_list_sensitive_level=users_not_in_aspects_list_sensitive_level.to_s
-    if users_not_in_aspects_list_sensitive_level== "0.01"
+    if users_not_in_aspects_list_sensitive_level== "0.0"
       @selected_sl_option_users_not_in_aspect_list="Minium"
     elsif users_not_in_aspects_list_sensitive_level== "0.25"
       @selected_sl_option_users_not_in_aspect_list="Low"
-    elsif users_not_in_aspects_list_sensitive_level== "0.5"
+    elsif users_not_in_aspects_list_sensitive_level== "0.50"
       @selected_sl_option_users_not_in_aspect_list="Mid"
     elsif users_not_in_aspects_list_sensitive_level== "1.0"
       @selected_sl_option_users_not_in_aspect_list="High"
@@ -281,70 +281,92 @@ class UsersController < ApplicationController
     #  Friends
     friends_aspects_trust_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "Friends").collect{|e| e.trust_level}.first
     friends_aspects_trust_level=friends_aspects_trust_level.to_s
-    if friends_aspects_trust_level== "0.25"
+    if friends_aspects_trust_level== "0.0"
+      @selected_tl_option_friends_aspect="None"
+    elsif friends_aspects_trust_level== "0.25"
       @selected_tl_option_friends_aspect="Low"
     elsif friends_aspects_trust_level== "0.5"
       @selected_tl_option_friends_aspect="Mid"
-    elsif friends_aspects_trust_level== "1.0"
+    elsif friends_aspects_trust_level== "0.75"
       @selected_tl_option_friends_aspect="High"
+    elsif friends_aspects_trust_level== "1.0"
+      @selected_tl_option_friends_aspect="Highest"
     end
 
     #  Family
     family_aspects_trust_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "Family").collect{|e| e.trust_level}.first
     family_aspects_trust_level=family_aspects_trust_level.to_s
-    if family_aspects_trust_level== "0.25"
+    if family_aspects_trust_level== "0.0"
+      @selected_tl_option_family_aspect="None"
+    elsif family_aspects_trust_level== "0.25"
       @selected_tl_option_family_aspect="Low"
     elsif family_aspects_trust_level== "0.5"
       @selected_tl_option_family_aspect="Mid"
+    elsif family_aspects_trust_level== "0.75"
+      @selected_tl_option_family_aspect="Hight"
     elsif family_aspects_trust_level== "1.0"
-      @selected_tl_option_family_aspect="High"
+      @selected_tl_option_family_aspect="Highest"
     end
 
     #  Coworker
     work_aspects_trust_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "Work").collect{|e| e.trust_level}.first
     work_aspects_trust_level=work_aspects_trust_level.to_s
-    if work_aspects_trust_level== "0.25"
+    if work_aspects_trust_level== "0.0"
+      @selected_tl_option_work_aspect="None"
+    elsif work_aspects_trust_level== "0.25"
       @selected_tl_option_work_aspect="Low"
     elsif work_aspects_trust_level== "0.5"
       @selected_tl_option_work_aspect="Mid"
-    elsif work_aspects_trust_level== "1.0"
+    elsif work_aspects_trust_level== "0.75"
       @selected_tl_option_work_aspect="High"
+    elsif work_aspects_trust_level== "1.0"
+      @selected_tl_option_work_aspect="Highest"
     end
 
     # Acquaintances
     acquaintances_aspects_trust_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "Acquaintances").collect{|e| e.trust_level}.first
     acquaintances_aspects_trust_level=acquaintances_aspects_trust_level.to_s
-    if acquaintances_aspects_trust_level== "0.25"
+    if acquaintances_aspects_trust_level== "0.0"
+      @selected_tl_option_acquaintances_aspect="None"
+    elsif acquaintances_aspects_trust_level== "0.25"
       @selected_tl_option_acquaintances_aspect="Low"
     elsif acquaintances_aspects_trust_level== "0.5"
       @selected_tl_option_acquaintances_aspect="Mid"
-    elsif acquaintances_aspects_trust_level== "1.0"
+    elsif acquaintances_aspects_trust_level== "0.75"
       @selected_tl_option_acquaintances_aspect="High"
+    elsif acquaintances_aspects_trust_level== "1.0"
+      @selected_tl_option_acquaintances_aspect="Highest"
     end
 
     # Users who are not belong to your aspects list
-    users_not_in_aspects_list_trust_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "not in aspects list").collect{|e| e.trust_level}.first
+    users_not_in_aspects_list_trust_level=AspectsLevelsOfSenstivityAndTrust.where(:user_id => current_user.id, :relationship_type => "notaspects").collect{|e| e.trust_level}.first
     users_not_in_aspects_list_trust_level=users_not_in_aspects_list_trust_level.to_s
-    if users_not_in_aspects_list_trust_level== "0.01"
-      @selected_tl_option_users_not_in_aspect_list="No trust"
+    if users_not_in_aspects_list_trust_level== "0.0"
+      @selected_tl_option_users_not_in_aspect_list="None"
     elsif users_not_in_aspects_list_trust_level== "0.25"
       @selected_tl_option_users_not_in_aspect_list="Low"
-    elsif acquaintances_aspects_trust_level== "0.5"
+    elsif users_not_in_aspects_list_trust_level== "0.5"
       @selected_tl_option_users_not_in_aspect_list="Mid"
-    elsif acquaintances_aspects_trust_level== "1.0"
+    elsif users_not_in_aspects_list_trust_level== "0.75"
       @selected_tl_option_users_not_in_aspect_list="High"
+    elsif users_not_in_aspects_list_trust_level== "1.0"
+      @selected_tl_option_users_not_in_aspect_list="Highest"
     end
 
     # ------ Get trust threshold value to reshare -----------
 
     trust_threshold_value=Person.where(:id => current_user.id).collect{|e| e.tr_threshold}.first
     trust_threshold_value=trust_threshold_value.to_s
-      if trust_threshold_value== "0.25"
-        @tr_threshold_option="Low"
+      if trust_threshold_value== "0.0"
+        @tr_threshold_option="None"
+      elsif trust_threshold_value== "0.25"
+          @tr_threshold_option="Low"
       elsif trust_threshold_value== "0.5"
         @tr_threshold_option="Mid"
-      elsif trust_threshold_value== "1.0"
+      elsif trust_threshold_value== "0.75"
         @tr_threshold_option="High"
+      elsif trust_threshold_value== "1.0"
+        @tr_threshold_option="Highest"
       end
 
     # --------- Get mentioned user who are allowed to reshare -------
@@ -741,53 +763,53 @@ class UsersController < ApplicationController
      #location's posts
      if params[:sl_location_posts_option] != nil
        handler.reset_policies_of_shared_items_sensitive_level(current_user.id,"location")
-       if params[:sl_location_posts_option] == "Minimum"
-         handler.add_shared_items_sensitive_level_policies(current_user.id,"location", 0.01)
+       if params[:sl_location_posts_option] == "None"
+         handler.add_shared_items_sensitive_level_policies(current_user.id,"location", 0.0)
        elsif params[:sl_location_posts_option] == "Low"
          handler.add_shared_items_sensitive_level_policies(current_user.id,"location", 0.25)
        elsif params[:sl_location_posts_option] == "Mid"
-         handler.add_shared_items_sensitive_level_policies(current_user.id,"location", 0.50)
+         handler.add_shared_items_sensitive_level_policies(current_user.id,"location", 0.5)
        elsif params[:sl_location_posts_option] == "High"
          handler.add_shared_items_sensitive_level_policies(current_user.id,"location", 1.0)
        end
      else
        handler.reset_policies_of_shared_items_sensitive_level(current_user.id,"location")
-       handler.add_shared_items_sensitive_level_policies(current_user.id,"location",0.01)
+       handler.add_shared_items_sensitive_level_policies(current_user.id,"location",1.0)
      end
      # pic posts
       if params[:sl_picture_posts_option] != nil
         handler.reset_policies_of_shared_items_sensitive_level(current_user.id,"picture")
-        if params[:sl_picture_posts_option] == "Minimum"
-          handler.add_shared_items_sensitive_level_policies(current_user.id,"picture", 0.01)
+        if params[:sl_picture_posts_option] == "None"
+          handler.add_shared_items_sensitive_level_policies(current_user.id,"picture", 0.0)
         elsif params[:sl_picture_posts_option] == "Low"
           handler.add_shared_items_sensitive_level_policies(current_user.id,"picture", 0.25)
         elsif params[:sl_picture_posts_option] == "Mid"
-          handler.add_shared_items_sensitive_level_policies(current_user.id,"picture", 0.50)
+          handler.add_shared_items_sensitive_level_policies(current_user.id,"picture", 0.5)
         elsif params[:sl_picture_posts_option] == "High"
           handler.add_shared_items_sensitive_level_policies(current_user.id,"picture", 1.0)
         end
       else
         handler.reset_policies_of_shared_items_sensitive_level(current_user.id,"picture")
-        handler.add_shared_items_sensitive_level_policies(current_user.id,"picture",0.01)
+        handler.add_shared_items_sensitive_level_policies(current_user.id,"picture",1.0)
       end
      # @ posts
       if params[:sl_mention_posts_option] != nil
         handler.reset_policies_of_shared_items_sensitive_level(current_user.id,"mention")
-        if params[:sl_mention_posts_option] == "Minimum"
-          handler.add_shared_items_sensitive_level_policies(current_user.id,"mention", 0.01)
+        if params[:sl_mention_posts_option] == "None"
+          handler.add_shared_items_sensitive_level_policies(current_user.id,"mention", 0.0)
         elsif params[:sl_mention_posts_option] == "Low"
           handler.add_shared_items_sensitive_level_policies(current_user.id,"mention", 0.25)
         elsif params[:sl_mention_posts_option] == "Mid"
-          handler.add_shared_items_sensitive_level_policies(current_user.id,"mention", 0.50)
+          handler.add_shared_items_sensitive_level_policies(current_user.id,"mention", 0.5)
         elsif params[:sl_mention_posts_option] == "High"
           handler.add_shared_items_sensitive_level_policies(current_user.id,"mention", 1.0)
         end
       else
         handler.reset_policies_of_shared_items_sensitive_level(current_user.id,"mention")
-        handler.add_shared_items_sensitive_level_policies(current_user.id,"mention",0.01)
+        handler.add_shared_items_sensitive_level_policies(current_user.id,"mention",1.0)
       end
 
-    # Third sensitive level of each aspects
+    # Third sensitive level of each aspects -------  ******take this off not any more important *******
      # Friend
       if params[:sl_friends_aspect_option] != nil
         handler.reset_policies_of_aspect_sensitive_level(current_user.id,"Friends")
@@ -854,31 +876,35 @@ class UsersController < ApplicationController
     end
    # Users who are not belong to your aspects list
     if params[:sl_users_not_in_aspect_listt_option] != nil
-      handler.reset_policies_of_aspect_sensitive_level(current_user.id,"not in aspects list")
+      handler.reset_policies_of_aspect_sensitive_level(current_user.id,"notaspects")
       if params[:sl_users_not_in_aspect_listt_option] == "Minimum"
-        handler.add_aspects_sensitive_level_policies(current_user.id,"not in aspects list", 0.01)
+        handler.add_aspects_sensitive_level_policies(current_user.id,"notaspects", 0.01)
       elsif params[:sl_users_not_in_aspect_listt_option] == "Low"
-        handler.add_aspects_sensitive_level_policies(current_user.id,"not in aspects list", 0.25)
+        handler.add_aspects_sensitive_level_policies(current_user.id,"notaspects", 0.25)
       elsif params[:sl_users_not_in_aspect_listt_option] == "Mid"
-        handler.add_aspects_sensitive_level_policies(current_user.id,"not in aspects list", 0.50)
+        handler.add_aspects_sensitive_level_policies(current_user.id,"notaspects", 0.50)
       elsif params[:sl_users_not_in_aspect_listt_option] == "High"
-        handler.add_aspects_sensitive_level_policies(current_user.id,"not in aspects list", 1.0)
+        handler.add_aspects_sensitive_level_policies(current_user.id,"notaspects", 1.0)
       end
     else
-      handler.reset_policies_of_aspect_sensitive_level(current_user.id,"not in aspects list")
-      handler.add_aspects_sensitive_level_policies(current_user.id,"not in aspects list",0.01)
+      handler.reset_policies_of_aspect_sensitive_level(current_user.id,"notaspects")
+      handler.add_aspects_sensitive_level_policies(current_user.id,"notaspects",0.01)
     end
 
-     # Fourth trust level of each aspects
+   # fourth trust level of each aspects
       # Friends
       if params[:tl_friends_aspect_option] != nil
         handler.reset_policies_of_aspect_trust_level(current_user.id,"Friends")
-        if params[:tl_friends_aspect_option] == "Low"
-          handler.add_aspects_trust_level_policies(current_user.id,"Friends", 0.25)
+        if params[:tl_friends_aspect_option] == "None"
+          handler.add_aspects_trust_level_policies(current_user.id,"Friends", 0.0)
+        elsif params[:tl_friends_aspect_option] == "Low"
+            handler.add_aspects_trust_level_policies(current_user.id,"Friends", 0.25)
         elsif params[:tl_friends_aspect_option] == "Mid"
-          handler.add_aspects_trust_level_policies(current_user.id,"Friends", 0.50)
+          handler.add_aspects_trust_level_policies(current_user.id,"Friends", 0.5)
         elsif params[:tl_friends_aspect_option] == "High"
-          handler.add_aspects_trust_level_policies(current_user.id,"Friends", 1.0)
+          handler.add_aspects_trust_level_policies(current_user.id,"Friends", 0.75)
+        elsif params[:tl_friends_aspect_option] == "Highest"
+            handler.add_aspects_trust_level_policies(current_user.id,"Friends", 1.0)
         end
       else
         handler.reset_policies_of_aspect_trust_level(current_user.id,"Friends")
@@ -886,11 +912,15 @@ class UsersController < ApplicationController
      # Family
       if params[:tl_family_aspect_option] != nil
         handler.reset_policies_of_aspect_trust_level(current_user.id,"Family")
-        if params[:tl_family_aspect_option] == "Low"
+        if params[:tl_family_aspect_option] == "None"
+          handler.add_aspects_trust_level_policies(current_user.id,"Family", 0.0)
+        elsif params[:tl_family_aspect_option] == "Low"
           handler.add_aspects_trust_level_policies(current_user.id,"Family", 0.25)
         elsif params[:tl_family_aspect_option] == "Mid"
-          handler.add_aspects_trust_level_policies(current_user.id,"Family", 0.50)
+          handler.add_aspects_trust_level_policies(current_user.id,"Family", 0.5)
         elsif params[:tl_family_aspect_option] == "High"
+          handler.add_aspects_trust_level_policies(current_user.id,"Family", 0.75)
+        elsif params[:tl_family_aspect_option] == "Highest"
           handler.add_aspects_trust_level_policies(current_user.id,"Family", 1.0)
         end
       else
@@ -899,24 +929,32 @@ class UsersController < ApplicationController
      # coworker
       if params[:tl_coworkers_aspect_option] != nil
         handler.reset_policies_of_aspect_trust_level(current_user.id,"Work")
-        if params[:tl_coworkers_aspect_option] == "Low"
+        if params[:tl_coworkers_aspect_option] == "None"
+          handler.add_aspects_trust_level_policies(current_user.id,"Work", 0.0)
+        elsif params[:tl_coworkers_aspect_option] == "Low"
           handler.add_aspects_trust_level_policies(current_user.id,"Work", 0.25)
         elsif params[:tl_coworkers_aspect_option] == "Mid"
-          handler.add_aspects_trust_level_policies(current_user.id,"Work", 0.50)
+          handler.add_aspects_trust_level_policies(current_user.id,"Work", 0.5)
         elsif params[:tl_coworkers_aspect_option] == "High"
+            handler.add_aspects_trust_level_policies(current_user.id,"Work", 0.75)
+        elsif params[:tl_coworkers_aspect_option] == "Highest"
           handler.add_aspects_trust_level_policies(current_user.id,"Work", 1.0)
         end
       else
-        handler.reset_policies_of_aspect_trust_level(current_user.id,"Family")
+        handler.reset_policies_of_aspect_trust_level(current_user.id,"Work")
       end
      # acquaintances
       if params[:tl_acquaintances_aspect_option] != nil
         handler.reset_policies_of_aspect_trust_level(current_user.id,"Acquaintances")
-        if params[:tl_acquaintances_aspect_option] == "Low"
+        if params[:tl_acquaintances_aspect_option] == "None"
+          handler.add_aspects_trust_level_policies(current_user.id,"Acquaintances", 0.0)
+        elsif params[:tl_acquaintances_aspect_option] == "Low"
           handler.add_aspects_trust_level_policies(current_user.id,"Acquaintances", 0.25)
         elsif params[:tl_acquaintances_aspect_option] == "Mid"
-          handler.add_aspects_trust_level_policies(current_user.id,"Acquaintances", 0.50)
+           handler.add_aspects_trust_level_policies(current_user.id,"Acquaintances", 0.5)
         elsif params[:tl_acquaintances_aspect_option] == "High"
+          handler.add_aspects_trust_level_policies(current_user.id,"Acquaintances", 0.75)
+        elsif params[:tl_acquaintances_aspect_option] == "Highest"
           handler.add_aspects_trust_level_policies(current_user.id,"Acquaintances", 1.0)
         end
       else
@@ -924,28 +962,34 @@ class UsersController < ApplicationController
       end
     # Users who are not belong to your aspects list
     if params[:tl_users_not_in_aspect_list_option] != nil
-      handler.reset_policies_of_aspect_trust_level(current_user.id,"not in aspects list")
-      if params[:tl_users_not_in_aspect_list_option] == "No trust"
-        handler.add_aspects_trust_level_policies(current_user.id,"not in aspects list", 0.01)
-      elsif params[:tl_users_not_in_aspect_list_option] == "low"
-          handler.add_aspects_trust_level_policies(current_user.id,"not in aspects list", 0.25)
+      handler.reset_policies_of_aspect_trust_level(current_user.id,"notaspects")
+      if params[:tl_users_not_in_aspect_list_option] == "None"
+        handler.add_aspects_trust_level_policies(current_user.id,"notaspects", 0.0)
+      elsif params[:tl_users_not_in_aspect_list_option] == "Low"
+        handler.add_aspects_trust_level_policies(current_user.id,"notaspects", 0.25)
       elsif params[:tl_users_not_in_aspect_list_option] == "Mid"
-        handler.add_aspects_trust_level_policies(current_user.id,"not in aspects list", 0.50)
+        handler.add_aspects_trust_level_policies(current_user.id,"notaspects", 0.5)
       elsif params[:tl_users_not_in_aspect_list_option] == "High"
-        handler.add_aspects_trust_level_policies(current_user.id,"not in aspects list", 1.0)
+        handler.add_aspects_trust_level_policies(current_user.id,"notaspects", 0.75)
+      elsif params[:tl_users_not_in_aspect_list_option] == "Highest"
+        handler.add_aspects_trust_level_policies(current_user.id,"notaspects", 1.0)
       end
     else
-      handler.reset_policies_of_aspect_trust_level(current_user.id,"not in aspects list")
+      handler.reset_policies_of_aspect_trust_level(current_user.id,"notaspects")
     end
 
      # Fifth trust threshold value to able to reshare
       if params[:tr_threshold] != nil
         handler.reset_policies_of_threshold_trust_level(current_user.id)
-        if params[:tr_threshold] == "Low"
+        if params[:tr_threshold] == "None"
+          handler.add_threshold_trust_level_policies(current_user.id, 0.0)
+        elsif params[:tr_threshold] == "Low"
           handler.add_threshold_trust_level_policies(current_user.id, 0.25)
         elsif params[:tr_threshold] == "Mid"
-          handler.add_threshold_trust_level_policies(current_user.id, 0.50)
+          handler.add_threshold_trust_level_policies(current_user.id, 0.5)
         elsif params[:tr_threshold] == "High"
+          handler.add_threshold_trust_level_policies(current_user.id, 0.75)
+        elsif params[:tr_threshold] == "Highest"
           handler.add_threshold_trust_level_policies(current_user.id, 1.0)
         end
       else

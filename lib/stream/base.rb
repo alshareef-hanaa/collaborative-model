@@ -47,19 +47,20 @@ class Stream::Base
       policies = []
       posts.each do |p|
         ppl= Diaspora::Mentionable.people_from_string(p.text).collect{|ppl_id| ppl_id.owner.id}
+        # change to make reshare available for viwers and controllers
         if (p.author_id == self.user.id)  || (ppl.include?(self.user.id))
-           permitted_mentioned_users_to_share= sharing(p)
-           if permitted_mentioned_users_to_share.include?(self.user.id)
-              p[:public] = true
-              else
-                p[:public] = nil
-            end
+           # permitted_mentioned_users_to_share = sharing2(p)
+           # if permitted_mentioned_users_to_share.include?(self.user.id)
+           #    p[:public] = true
+           #    else
+           #      p[:public] = nil
+           #  end
         returningArray.push(p)
         else
          # policies = sharepolicies(p)
-        list_of_permitted_users_to_view, list_of_denied_users_to_view = permittedanddeniedaccessors(p)
+        list_of_permitted_users_to_view = permittedanddeniedaccessors(p)
           if list_of_permitted_users_to_view.include?(self.user.id)
-            permitted_users_to_view_and_reshare = sharing(p)
+            permitted_users_to_view_and_reshare = sharing1(p)
             if permitted_users_to_view_and_reshare.include?(self.user.id)
               p[:public] = true
             else
@@ -77,6 +78,11 @@ class Stream::Base
 
   # Algorithm 1
    def permittedanddeniedaccessors (post)
+    # to weight our factors
+     trust_factor_weight = 1
+     sl_factor_weight = 1
+     rn_factor_weight= 1
+     weight_of_rn_accessor_type=0.50
     # Algorithm1 takes post as argument
     list_of_allowed_ids = []
     list_of_disallwoed_ids =[]
@@ -147,19 +153,20 @@ class Stream::Base
             denied_votes_ids.each do |controller_id|
             denied_decision_info=policies.detect {|x| x[:user_id] == controller_id}
             sensitivity_of_post= denied_decision_info[:sensitivity_of_post]
-            sensitivity_of_relationship=denied_decision_info[:sensitivity_of_relationship]
+            # weight_of_rn_accessor_type=0.50
+            # weight_of_rn_accessor_type=denied_decision_info[:sensitivity_of_relationship]
             relationship_type= rt(controller_id,user)
             relationship_type=relationship_type.to_s
             # --------retrieve sensitive level of this relationship type from controller side--------
             if relationship_type.nil? || relationship_type.empty?
-              sensitive_level_between_controller_and_accessor=AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller_id,:relationship_type => "not in aspects list").collect{|e| e.sensitive_level}.first
-                trust_level_between_controller_and_accessor=AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller_id,:relationship_type => "not in aspects list").collect{|e| e.trust_level}.first
+              # sensitive_level_between_controller_and_accessor=AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller_id,:relationship_type => "not in aspects list").collect{|e| e.sensitive_level}.first
+                trust_level_between_controller_and_accessor=AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller_id,:relationship_type => "notaspects").collect{|e| e.trust_level}.first
             else
-              sensitive_level_between_controller_and_accessor=AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller_id,:relationship_type => relationship_type).collect{|e| e.sensitive_level}.first
+              # sensitive_level_between_controller_and_accessor=AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller_id,:relationship_type => relationship_type).collect{|e| e.sensitive_level}.first
               trust_level_between_controller_and_accessor=AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller_id,:relationship_type => relationship_type).collect{|e| e.trust_level}.first
             end
-            sensitive_level=(sensitivity_of_relationship + sensitive_level_between_controller_and_accessor)/2
-             decision_deny += sensitivity_of_post * sensitive_level * (1-trust_level_between_controller_and_accessor)
+            # sensitive_level=(sensitivity_of_relationship + sensitive_level_between_controller_and_accessor)/2
+             decision_deny += ((sl_factor_weight * sensitivity_of_post) + (rn_factor_weight * weight_of_rn_accessor_type) + (trust_factor_weight*(1-trust_level_between_controller_and_accessor)))/3
             end
 
             # compute permit decision
@@ -176,22 +183,23 @@ class Stream::Base
               permitted_votes_ids.each do |controller_id|
               permitted_decision_info=policies.find{|x| (x[:user_id] == controller_id)}
               sensitivity_of_post= permitted_decision_info[:sensitivity_of_post]
-              sensitivity_of_relationship=permitted_decision_info[:sensitivity_of_relationship]
+              # weight_of_rn_accessor_type=permitted_decision_info[:sensitivity_of_relationship]
               relationship_type= rt(controller_id,user)
               relationship_type=relationship_type.to_s
               # --------retrieve sensitive level of this relationship type from controller side--------
               if relationship_type.nil? || relationship_type.empty?
-                sensitive_level_between_controller_and_accessor=AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller_id,:relationship_type => "not in aspects list").collect{|e| e.sensitive_level}.first
-                trust_level_between_controller_and_accessor=AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller_id,:relationship_type => "not in aspects list").collect{|e| e.trust_level}.first
+                # sensitive_level_between_controller_and_accessor=AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller_id,:relationship_type => "not in aspects list").collect{|e| e.sensitive_level}.first
+                trust_level_between_controller_and_accessor=AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller_id,:relationship_type => "notaspects").collect{|e| e.trust_level}.first
               else
-                sensitive_level_between_controller_and_accessor=AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller_id,:relationship_type => relationship_type).collect{|e| e.sensitive_level}.first
+                # sensitive_level_between_controller_and_accessor=AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller_id,:relationship_type => relationship_type).collect{|e| e.sensitive_level}.first
                 trust_level_between_controller_and_accessor=AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller_id,:relationship_type => relationship_type).collect{|e| e.trust_level}.first
               end
-              sensitive_level=(sensitivity_of_relationship + sensitive_level_between_controller_and_accessor)/2
-              decision_permit += sensitivity_of_post * (1-sensitive_level) * trust_level_between_controller_and_accessor
+              # sensitive_level=(sensitivity_of_relationship + sensitive_level_between_controller_and_accessor)/2
+              decision_permit += ((sl_factor_weight * sensitivity_of_post) + (rn_factor_weight * weight_of_rn_accessor_type) + ( trust_factor_weight * trust_level_between_controller_and_accessor))/3
+
             end
 
-            if decision_permit >= decision_deny
+            if decision_permit > decision_deny
               final_list_of_permitted_accessors.push(user)
             else
               final_list_of_denied_accessors.push(user)
@@ -208,18 +216,23 @@ class Stream::Base
     # ppl.each do |id_associted_controller|
     #   final_list_of_permitted_accessors.push (id_associted_controller)
     # end
-    return   final_list_of_permitted_accessors, final_list_of_denied_accessors #"here I only returen list of allowed users because if that user allowed than post will show up in his stream "
+    return   final_list_of_permitted_accessors #final_list_of_denied_accessors #"here I only returen list of allowed users because if that user allowed than post will show up in his stream "
   end # end of algorithm
 
 
-  # Algorithm 2
-    def sharing (post)
+  # Algorithms 2 for sharing
+  # ___viewer sharing_____
+    def sharing1 (post)
       final_list_of_disseminators= []
       final_list_of_non_disseminator= []
-      final_list_of_permitted_accessors,final_list_of_denied_accessors = permittedanddeniedaccessors(post)
+      final_list_of_permitted_accessors = permittedanddeniedaccessors(post)
       policies=sharepolicies(post)
+      weight_of_rn_accessor_type=0.5
+      # to weight our factors
+      trust_factor_weight = 0.0
+      sl_factor_weight = 0.0
+      rn_factor_weight= 0.0
 
-      # ___viewer sharing_____
       final_list_of_permitted_accessors.each do |viewer|
         contrller_cont=0
         permitted_controllers_votes_reshare= []
@@ -231,7 +244,7 @@ class Stream::Base
           relationship_type= rt1(controller[:user_id],viewer)
           relationship_type=relationship_type.to_s
           if relationship_type.nil? || relationship_type.empty?
-            trust_level_between_controller_and_viewer =AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller[:user_id],:relationship_type =>"not in aspects list").collect{|e| e.trust_level}.first
+            trust_level_between_controller_and_viewer =AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller[:user_id],:relationship_type =>"notaspects").collect{|e| e.trust_level}.first
           else
             # retrieve trust level of this relationship type from controller side
             trust_level_between_controller_and_viewer = AspectsLevelsOfSenstivityAndTrust.where(:user_id => controller[:user_id],:relationship_type => relationship_type).collect{|e| e.trust_level}.first
@@ -254,23 +267,38 @@ class Stream::Base
           permitted_controllers_votes_reshare.each do |controller_p|
                         permitted_decision_info=policies.find{|x| (x[:user_id] == controller_p)}
                         sensitivity_of_post= permitted_decision_info[:sensitivity_of_post]
-                         reshare_permit_decision += sensitivity_of_post # where is sensitivity of relationship ?
+                         reshare_permit_decision += (sl_factor_weight * sensitivity_of_post)
           end
           denied_controllers_votes_reshare.each do |controller_d|
             denied_decision_info=policies.find{|x| (x[:user_id] == controller_d)}
             sensitivity_of_post= denied_decision_info[:sensitivity_of_post]
-            reshare_deny_decision += sensitivity_of_post
+            reshare_deny_decision += (sl_factor_weight * sensitivity_of_post)
           end
-            if reshare_permit_decision >= reshare_deny_decision
+            if reshare_permit_decision > reshare_deny_decision
               final_list_of_disseminators.push(viewer)
             else
               final_list_of_non_disseminator.push(viewer)
             end
         end
       end
+      return final_list_of_disseminators
+    end
+
+
+  def sharing2 (post)
+    final_list_of_disseminators= []
+    final_list_of_non_disseminator= []
+    # final_list_of_permitted_accessors,final_list_of_denied_accessors = permittedanddeniedaccessors(post)
+    policies=sharepolicies(post)
+    weight_of_rn_accessor_type=0.5
+    # to weight our factors
+    trust_factor_weight = 0.0
+    sl_factor_weight = 0.0
+    rn_factor_weight= 0.0
+
       # ___controller sharing_____
-      controllers= Diaspora::Mentionable.people_from_string(post.text)
-      controllers=controllers.map{|e| [e.owner_id]}.flatten(1)
+      controllers= Diaspora::Mentionable.people_from_string(post.text).collect{|ppl_id| ppl_id.owner.id}
+      # controllers=controllers.map{|e| [e.owner_id]}.flatten(1)
       controllers.push(post.author_id)
 
       controllers.each do |cid|
@@ -285,17 +313,17 @@ class Stream::Base
           relationship_type= rt1(voter,cid)
           relationship_type=relationship_type.to_s
           if relationship_type.nil? || relationship_type.empty?
-            trust_level_between_controller_and_voter =AspectsLevelsOfSenstivityAndTrust.where(:user_id => voter[:user_id],:relationship_type =>"not in aspects list").collect{|e| e.trust_level}.first
+            trust_level_between_controller_and_voter =AspectsLevelsOfSenstivityAndTrust.where(:user_id => voter,:relationship_type =>"notaspects").collect{|e| e.trust_level}.first
           else
             # retrieve trust level of this relationship type from voter side
-            trust_level_between_controller_and_voter = AspectsLevelsOfSenstivityAndTrust.where(:user_id => voter[:user_id],:relationship_type => relationship_type).collect{|e| e.trust_level}.first
+            trust_level_between_controller_and_voter = AspectsLevelsOfSenstivityAndTrust.where(:user_id => voter,:relationship_type => relationship_type).collect{|e| e.trust_level}.first
           end
           # retrieve trust threshold of controller
-          trust_threshold=Person.where(:owner_id => voter[:user_id]).collect{|am| am.tr_threshold}.first
+          trust_threshold=Person.where(:owner_id => voter).collect{|am| am.tr_threshold}.first
           if trust_level_between_controller_and_voter >= trust_threshold
-            permitted_controllers_votes_reshare.push (voter[:user_id])
+            permitted_controllers_votes_reshare.push (voter)
           else
-            denied_controllers_votes_reshare.push(voter[:user_id])
+            denied_controllers_votes_reshare.push(voter)
           end
           contrller_cont=contrller_cont+1
         end
@@ -309,14 +337,14 @@ class Stream::Base
           permitted_controllers_votes_reshare.each do |controller_p|
             permitted_decision_info=policies.find{|x| (x[:user_id] == controller_p)}
             sensitivity_of_post= permitted_decision_info[:sensitivity_of_post]
-            reshare_permit_decision += sensitivity_of_post # where is sensitivity of relationship ?
+            reshare_permit_decision += (sl_factor_weight * sensitivity_of_post)
           end
           denied_controllers_votes_reshare.each do |controller_d|
             denied_decision_info=policies.find{|x| (x[:user_id] == controller_d)}
             sensitivity_of_post= denied_decision_info[:sensitivity_of_post]
-            reshare_deny_decision += sensitivity_of_post
+            reshare_deny_decision += (sl_factor_weight * sensitivity_of_post)
           end
-          if reshare_permit_decision >= reshare_deny_decision
+          if reshare_permit_decision > reshare_deny_decision
             final_list_of_disseminators.push(cid)
           else
             final_list_of_non_disseminator.push(cid)
@@ -324,7 +352,7 @@ class Stream::Base
         end
    end
       return final_list_of_disseminators
-    end
+  end
 
 #   # Algorithm 3 takes policies and controllers sharing voting
 #     def controllersharing(post)
@@ -391,21 +419,26 @@ class Stream::Base
   policies =[ ]
 
   # -------- Gathering sharing policies for all associated controllers------
-  # ------- stakeholders policies ---------
+
+  ####### ------- stakeholders policies --------- ######
 
   # Getting the mentioned people in the post
   ppl= Diaspora::Mentionable.people_from_string(p.text)
   # ppl=ppl.map{|e|[e.owner_id]}.flatten(1)
   # if ppl!=nil
   ppl.each do |person|
-    # retrieve relationship type between stakeholder and owner
+    # retrieve relationship type between stakeholder and owner ++++ what I need is the relationship between stakeholder and the owner +++++
     # x=person.owner_id
     # y=p.author_id
     relationship_type= rt(person.owner_id,p.author_id)
     relationship_type=relationship_type.to_s
+
     # --------retrieve sensitive level of this relationship type from stakeholder side--------
     # sensitive_level_between_stakeholder_and_owner= Aspect.where(:user_id => person.owner_id, :name => relationship_type).collect{|e| e.sensitive_level}.first
-     sensitive_level_between_stakeholder_and_owner=AspectsLevelsOfSenstivityAndTrust.where(:user_id => person.owner_id,:relationship_type => relationship_type).collect{|e| e.sensitive_level}.first
+    #  sensitive_level_between_stakeholder_and_owner=AspectsLevelsOfSenstivityAndTrust.where(:user_id => person.owner_id,:relationship_type => relationship_type).collect{|e| e.sensitive_level}.first
+    # here is only rn and weight 0.50
+    accessor_rn_weight=0.5
+
     # --------retrieve sensitive level of post--------
     #if post has 2 or 3 of these items then we consider the higher sl_post
     sensitive_levels_post= Array.new
@@ -419,13 +452,13 @@ class Stream::Base
       sensitive_level_post_photos = PostsSensitiveLevels.where(:user_id => person.owner_id, :post_type=>"picture").collect{|am| am.sensitive_level}.first
       sensitive_levels_post.push(sensitive_level_post_photos)
     end
-    if ppl.length > 1 then # post has another mentioned users (more than 1)
-      sensitive_level_post_metions = PostsSensitiveLevels.where(:user_id => person.owner_id, :post_type=>"mention").collect{|am| am.sensitive_level}.first
-      sensitive_levels_post.push (sensitive_level_post_metions)
+    if ppl.length >= 1 then # post has another mentioned users (more than 1)
+      sensitive_level_post_metions = PostsSensitiveLevels.where(:user_id => person, :post_type=>"mention").collect{|am| am.sensitive_level}.first
+      sensitive_levels_post.push(sensitive_level_post_metions)
     end
 
     if sensitive_levels_post.length == 0 # "*" here when post doesn't contain (address,pic or another @user) will consider minimum level for sensitivity
-       sensitive_level_post = 0.01
+       sensitive_level_post = 0.0
     elsif sensitive_levels_post.length >= 1
       sensitive_level_post = sensitive_levels_post.max
     end
@@ -447,7 +480,7 @@ class Stream::Base
       allowed_aspects= AllowedAspects.where(:user_id => person.owner_id,:relationship_type =>"Work").collect{|e| e.allowed_aspectids}
 
     elsif relationship_type == "Acquaintances"
-      allowed_aspects= AllowedAspects.where(:user_id => person.owner_id.id,:relationship_type =>"Acquaintances").collect{|e| e.allowed_aspectids}
+      allowed_aspects= AllowedAspects.where(:user_id => person.owner_id,:relationship_type =>"Acquaintances").collect{|e| e.allowed_aspectids}
     end
     # when controller allows everyone (this not mean public , it means only aspects in person SN )
     if allowed_aspects.include? -1
@@ -503,11 +536,12 @@ class Stream::Base
     elsif disallowed_aspects.include? -4
       disallowed_aspects.delete(-4)
       ppl2=[]
+      ppl_for_aspects= Diaspora::Mentionable.people_from_string(p.text).collect{|e| e.owner.id}
       ppl_for_aspects.each do |id|
         ppl2.push(id)
       end
       ppl2.push(p.author_id)
-      ppl3.delete(person.id) # why ppl3 I think is wrong , should be ppl2
+      ppl2.delete(person.id) # why ppl3 I think is wrong , should be ppl2
       ppl2.each do |controller|
         controller_aspects_ids = Aspect.where(:user_id => controller).collect{|e| e.id}
         controller_aspects_ids.each do |aspects_id|
@@ -535,7 +569,8 @@ class Stream::Base
       end
      # second part which set all relevant controllers' aspects as disallowed aspects
       ppl3=[]
-      ppl_for_aspects.each do |id|
+       ppl_for_aspects= Diaspora::Mentionable.people_from_string(p.text).collect{|e| e.owner.id}
+       ppl_for_aspects.each do |id|
         ppl3.push(id)
       end
       ppl3.push(p.author_id)
@@ -549,7 +584,7 @@ class Stream::Base
     end
 
 
-    policy= {user_id: person.owner_id , type_of_controller: "Stakeholder",  sensitivity_of_relationship: sensitive_level_between_stakeholder_and_owner,sensitivity_of_post: sensitive_level_post,allowed_aspects: allowed_aspects, disallowed_aspects: disallowed_aspects}
+    policy= {user_id: person.owner_id , type_of_controller: "Stakeholder",  sensitivity_of_relationship: accessor_rn_weight,sensitivity_of_post: sensitive_level_post,allowed_aspects: allowed_aspects, disallowed_aspects: disallowed_aspects}
     policies.push (policy)
   end # for stakeholders loop
 
@@ -562,7 +597,7 @@ class Stream::Base
       # (params[:status_message][:aspect_ids]).map(&:to_i)
       if (p.public == true) || (owner_all_aspects.length == allowed_aspects.length)
         # params[:status_message][:aspect_ids].include?('public') || params[:status_message][:aspect_ids].include?('all_aspects') || owner_all_aspects.length == allowed_aspects.length
-        allowed_aspects = p.aspect_ids
+        allowed_aspects = p.aspect_ids # TODO: I think here should be allowed_aspects=owner_all_aspects not just selected aspect
         disallowed_aspects=nil
       elsif owner_all_aspects.length != allowed_aspects.length
         owner_all_aspects.each do |dis|
@@ -573,20 +608,23 @@ class Stream::Base
       end
 
       # ----determined sensitive level of relationship type
+      # here is only rn and weight 0.50
+       accessor_rn_weight=0.5
+
       ppl= Diaspora::Mentionable.people_from_string(p.text)
-      sensitive_level_between_owner_and_all_stakeholders=[]
+      # sensitive_level_between_owner_and_all_stakeholders=[]
       ppl.each do |person|
-        # retrieve relationship type between owner and each stakeholders
+      #   # retrieve relationship type between owner and each stakeholders
         x=p.author_id
         y=person.owner_id
         relationship_type= rt(x, y)
         relationship_type_name=relationship_type.to_s
-        # retrieve sensitive level of this relationship type from owner side
-        # sensitive_level_between_owner_and_stakeholder= Aspect.where(:user_id => p.author_id, :name => relationship_type).collect{|e| e.sensitive_level}.first
-        sensitive_level_between_owner_and_stakeholder= AspectsLevelsOfSenstivityAndTrust.where(:user_id => p.author_id,:relationship_type => relationship_type_name).collect{|e| e.sensitive_level}.first
-        sensitive_level_between_owner_and_all_stakeholders.push(sensitive_level_between_owner_and_stakeholder)
+      #   # retrieve sensitive level of this relationship type from owner side
+      #   # sensitive_level_between_owner_and_stakeholder= Aspect.where(:user_id => p.author_id, :name => relationship_type).collect{|e| e.sensitive_level}.first
+      #   sensitive_level_between_owner_and_stakeholder= AspectsLevelsOfSenstivityAndTrust.where(:user_id => p.author_id,:relationship_type => relationship_type_name).collect{|e| e.sensitive_level}.first
+      #   sensitive_level_between_owner_and_all_stakeholders.push(sensitive_level_between_owner_and_stakeholder)
       end
-      sensitive_level_of_relationship_type= sensitive_level_between_owner_and_all_stakeholders.max
+      # sensitive_level_of_relationship_type= sensitive_level_between_owner_and_all_stakeholders.max
 
       # ------determined sensitive level of shared item
       sensitive_levels_post= []
@@ -604,7 +642,7 @@ class Stream::Base
       end
       sensitive_level_post_owner=sensitive_levels_post.max
 
-    policy= {user_id: p.author_id, type_of_controller: 'Owner',sensitivity_of_relationship: sensitive_level_of_relationship_type,sensitivity_of_post: sensitive_level_post_owner,allowed_aspects:allowed_aspects, disallowed_aspects:disallowed_aspects}
+    policy= {user_id: p.author_id, type_of_controller: 'Owner',sensitivity_of_relationship: accessor_rn_weight,sensitivity_of_post: sensitive_level_post_owner,allowed_aspects:allowed_aspects, disallowed_aspects:disallowed_aspects}
     policies.push(policy)
 
   return policies
